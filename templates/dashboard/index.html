@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Tableau de bord{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="breadcrumb">Accueil / Tableau de bord</div>
+        <h1>Tableau de bord épidémiologique</h1>
+        <p class="page-subtitle">
+            Dernière période disponible : <strong>{{ kpi.derniere_periode }}</strong>
+            {% if user.is_chef_district and user.district %}
+                — District de <strong>{{ user.district.nom_court }}</strong>
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<div class="container">
+    <!-- KPIs -->
+    <div class="kpi-grid">
+        <div class="kpi-card kpi-yellow">
+            <div class="kpi-label">Incidence régionale moyenne</div>
+            <div class="kpi-value">{{ kpi.incidence_moyenne }}<span class="kpi-unit">/1000 hab.</span></div>
+            <div class="kpi-help">Sur la dernière année observée</div>
+        </div>
+        <div class="kpi-card kpi-rouge">
+            <div class="kpi-label">Cas confirmés cumulés</div>
+            <div class="kpi-value">{{ kpi.total_cas|intcomma }}</div>
+            <div class="kpi-help">Période 2017-2025</div>
+        </div>
+        {% if kpi.district_top %}
+        <div class="kpi-card kpi-orange">
+            <div class="kpi-label">District le plus affecté</div>
+            <div class="kpi-value" style="font-size: 1.4rem;">{{ kpi.district_top.nom }}</div>
+            <div class="kpi-help">Incidence moyenne : {{ kpi.district_top.incidence }} /1000 hab.</div>
+        </div>
+        {% endif %}
+        <div class="kpi-card kpi-rouge">
+            <div class="kpi-label">Districts en alerte rouge</div>
+            <div class="kpi-value">{{ kpi.nb_alertes_rouges }}</div>
+            <div class="kpi-help">Dernière prévision disponible</div>
+        </div>
+        <div class="kpi-card kpi-vert">
+            <div class="kpi-label">Taux de complétude</div>
+            <div class="kpi-value">{{ kpi.taux_completude }}<span class="kpi-unit">%</span></div>
+            <div class="kpi-help">Données mensuelles renseignées</div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filter-bar">
+        <div class="form-row">
+            <div>
+                <label class="form-label" for="filter-annee">Année</label>
+                <select id="filter-annee" class="form-select">
+                    {% for a in annees_dispo %}
+                        <option value="{{ a }}" {% if a == annee_courante %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="filter-district">District (pour graphiques)</label>
+                <select id="filter-district" class="form-select">
+                    {% for d in districts %}
+                        <option value="{{ d.id }}" data-name="{{ d.nom }}">{{ d.nom_court }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="filter-variable">Variable climatique (CCF)</label>
+                <select id="filter-variable" class="form-select">
+                    <option value="precip">Précipitations</option>
+                    <option value="temp">Température</option>
+                    <option value="humidite">Humidité</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Carte choroplèthe -->
+    <div class="dashboard-grid-full">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">🗺️ Carte d'incidence — Districts sanitaires</h3>
+                <span class="text-muted" id="carte-info" style="font-size: 0.85rem;">Année : <strong id="carte-annee">{{ annee_courante }}</strong></span>
+            </div>
+            <div class="card-body chart-body">
+                <div id="map-incidence" class="map-container map-tall" style="width:100%; max-width:1100px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Séries temporelles + CCF -->
+    <div class="dashboard-grid">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">📈 Série temporelle — Incidence et climat</h3>
+            </div>
+            <div class="card-body chart-body">
+                <div class="chart-wrapper">
+                    <canvas id="chart-serie"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">🔗 Corrélation croisée (CCF)</h3>
+                <span class="text-muted" style="font-size: 0.85rem;" id="ccf-info"></span>
+            </div>
+            <div class="card-body chart-body">
+                <div class="chart-wrapper">
+                    <canvas id="chart-ccf"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Heatmap saisonnière -->
+    <div class="dashboard-grid-full">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">🌡️ Profil saisonnier — Incidence par district × mois</h3>
+            </div>
+            <div class="card-body">
+                <div id="heatmap-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="{% static 'js/dashboard.js' %}"></script>
+{% endblock %}

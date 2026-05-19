@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Guide d'utilisation{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1>Guide d'utilisation</h1>
+        <p class="page-subtitle">Mode d'emploi de la plateforme</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card">
+        <div class="card-body">
+            <h2>Connexion</h2>
+            <p>
+                L'accès aux fonctionnalités de l'application nécessite une authentification.
+                Deux rôles sont définis :
+            </p>
+            <ul>
+                <li><strong>Administrateur</strong> : accès complet (KPI globaux, prévisions tous districts, import de données, génération de rapports Word).</li>
+                <li><strong>Chef de district</strong> : accès restreint aux données de son district uniquement.</li>
+            </ul>
+
+            <h2 class="mt-5">Tableau de bord</h2>
+            <ol>
+                <li>Sélectionnez l'année et le district pour personnaliser l'affichage.</li>
+                <li>La <strong>carte choroplèthe</strong> affiche l'incidence moyenne annuelle par district.</li>
+                <li>Les <strong>graphiques de séries temporelles</strong> superposent l'incidence et les variables climatiques.</li>
+                <li>La <strong>corrélation croisée (CCF)</strong> identifie les décalages temporels significatifs entre le climat et l'incidence.</li>
+            </ol>
+
+            <h2 class="mt-5">Prévisions</h2>
+            <ol>
+                <li>Sélectionnez le district, l'algorithme (RF, XGBoost, ou comparaison) et l'horizon de prévision.</li>
+                <li>Cliquez sur <strong>« Générer les prévisions »</strong>.</li>
+                <li>Consultez la courbe, le tableau des valeurs et les métriques du modèle.</li>
+                <li>Cliquez sur <strong>« Générer l'analyse »</strong> pour obtenir une interprétation IA.</li>
+                <li>Les administrateurs peuvent exporter un <strong>rapport Word</strong> complet.</li>
+            </ol>
+
+            <h2 class="mt-5">Carte d'alerte</h2>
+            <ol>
+                <li>Choisissez l'algorithme et l'horizon de prévision.</li>
+                <li>Cliquez sur <strong>« Actualiser »</strong> pour calculer les niveaux d'alerte.</li>
+                <li>La carte affiche les districts colorés selon leur niveau (vert / orange / rouge).</li>
+                <li>Le panneau latéral liste les districts triés par sévérité décroissante.</li>
+                <li>Cliquez sur <strong>« Export PDF »</strong> pour intégrer la carte dans les rapports du GTR.</li>
+            </ol>
+
+            <h2 class="mt-5">Mise à jour des données (Admin)</h2>
+            <ol>
+                <li>Téléchargez le <strong>template Excel</strong> du mois à saisir.</li>
+                <li>Renseignez la colonne <code>cas_confirmes</code> pour chaque district.</li>
+                <li>Importez le fichier complété : l'application récupère automatiquement le climat via NASA POWER et recalcule les prévisions.</li>
+                <li>Le journal des imports trace toutes les opérations.</li>
+            </ol>
+        </div>
+    </div>
+</div>
+{% endblock %}

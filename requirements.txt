@@ -1,0 +1,50 @@
+# ============================================================
+# Système d'alerte précoce du paludisme - Extrême-Nord Cameroun
+# MINSANTE / Groupe Technique Régional Paludisme
+# ============================================================
+
+# --- Framework web ---
+Django==4.2.16
+python-decouple==3.8
+python-dotenv==1.0.1            # PythonAnywhere WSGI
+whitenoise==6.7.0
+
+# --- Base de données ---
+psycopg2-binary==2.9.9       # PostgreSQL (production)
+
+# --- Authentification ---
+bcrypt==4.2.0
+django-bcrypt==0.9.2
+
+# --- Données & ML (compatibilité avec les .pkl du notebook) ---
+numpy==1.26.4
+pandas==2.2.3
+scikit-learn==1.5.2
+xgboost==2.1.2
+joblib==1.4.2
+scipy==1.14.1
+
+# --- Lecture / écriture fichiers ---
+openpyxl==3.1.5
+xlsxwriter==3.2.0
+python-docx==1.1.2
+
+# --- Génération PDF ---
+reportlab==4.2.5
+
+# --- HTTP (NASA POWER API) ---
+requests==2.32.3
+
+# --- IA générative (Google Gemini - tier gratuit) ---
+google-generativeai==0.8.3
+
+# --- Visualisation côté serveur (génération de graphiques pour rapports) ---
+matplotlib==3.9.2
+seaborn==0.13.2
+
+# --- Production ---
+gunicorn==23.0.0
+dj-database-url==2.3.0
+
+# --- Développement (optionnel) ---
+django-debug-toolbar==4.4.6

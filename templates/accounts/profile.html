@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Mon profil{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1>Mon profil</h1>
+        <p class="page-subtitle">Informations personnelles et rôle dans le système</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card" style="max-width: 720px; margin: 0 auto;">
+        <div class="card-body">
+            <table class="table">
+                <tr><th>Identifiant</th><td>{{ user.username }}</td></tr>
+                <tr><th>Nom complet</th><td>{{ user.get_full_name|default:"—" }}</td></tr>
+                <tr><th>Email</th><td>{{ user.email|default:"—" }}</td></tr>
+                <tr><th>Téléphone</th><td>{{ user.telephone|default:"—" }}</td></tr>
+                <tr><th>Fonction</th><td>{{ user.fonction|default:"—" }}</td></tr>
+                <tr><th>Rôle</th><td><span class="badge badge-info">{{ user.get_role_display }}</span></td></tr>
+                <tr><th>District rattaché</th><td>{{ user.district.nom|default:"Tous les districts" }}</td></tr>
+                <tr><th>Membre depuis</th><td>{{ user.date_creation|date:"d/m/Y" }}</td></tr>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

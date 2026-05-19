@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Accueil{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="container">
+        <div class="hero-content">
+            <div class="region-tag">
+                <span>📍</span> Région de l'Extrême-Nord · Cameroun
+            </div>
+            <h1 class="font-serif">
+                Prévoir le paludisme,
+                <em>anticiper les ripostes.</em>
+            </h1>
+            <p>
+                Plateforme institutionnelle d'aide à la décision développée par l'{{ APP_AUTHOR }},
+                au sein de la {{ APP_DELEGATION }}. Tirant parti de huit années d'observations
+                épidémiologiques et climatiques, elle prévoit l'incidence palustre à 1, 2 et 3 mois
+                pour les {{ nb_districts }} districts sanitaires de la région, afin de mieux orienter
+                les interventions de santé publique.
+            </p>
+            <div class="hero-actions">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'dashboard:index' %}" class="btn btn-yellow btn-lg">
+                        Accéder à la plateforme
+                    </a>
+                {% else %}
+                    <a href="{% url 'accounts:login' %}" class="btn btn-yellow btn-lg">
+                        Se connecter
+                    </a>
+                {% endif %}
+                <a href="{% url 'about:index' %}" class="btn btn-outline btn-lg" style="color: #fff; border-color: #fff;">
+                    Découvrir le projet
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Section statistiques publiques -->
+<section style="padding: var(--space-7) 0; background: #fff;">
+    <div class="container">
+        <h2 style="text-align: center; margin-bottom: var(--space-6);">
+            La surveillance épidémique en chiffres
+        </h2>
+
+        <div class="kpi-grid" style="max-width: 1000px; margin: 0 auto;">
+            <div class="kpi-card">
+                <div class="kpi-label">Districts sanitaires</div>
+                <div class="kpi-value">{{ nb_districts }}</div>
+                <div class="kpi-help">Couverture intégrale de l'Extrême-Nord</div>
+            </div>
+            <div class="kpi-card kpi-yellow">
+                <div class="kpi-label">Période couverte</div>
+                <div class="kpi-value">
+                    {% if periode_debut %}{{ periode_debut.year }}{% else %}2017{% endif %}
+                    <span class="kpi-unit">—</span>
+                    {% if periode_fin %}{{ periode_fin.year }}{% else %}2025{% endif %}
+                </div>
+                <div class="kpi-help">Plus de huit années de données mensuelles</div>
+            </div>
+            <div class="kpi-card kpi-rouge">
+                <div class="kpi-label">Observations</div>
+                <div class="kpi-value">{{ nb_observations|intcomma }}</div>
+                <div class="kpi-help">Couples district × mois enregistrés</div>
+            </div>
+            <div class="kpi-card kpi-vert">
+                <div class="kpi-label">Cas confirmés cumulés</div>
+                <div class="kpi-value">{{ total_cas|intcomma }}</div>
+                <div class="kpi-help">Sur l'ensemble de la période</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Section présentation institutionnelle -->
+<section style="padding: var(--space-7) 0; background: var(--gray-50);">
+    <div class="container">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); align-items: center;">
+            <div>
+                <h2 class="font-serif">Au cœur de la Délégation Régionale</h2>
+                <p style="font-size: 1.02rem; line-height: 1.7;">
+                    Sous la tutelle du <strong>Ministère de la Santé Publique</strong> et au sein de la
+                    <strong>{{ APP_DELEGATION }}</strong>, le {{ APP_PROGRAMME }} coordonne la mise en
+                    œuvre de la stratégie nationale dans une région où le faciès sahélien impose des
+                    défis épidémiologiques spécifiques.
+                </p>
+                <p style="font-size: 1.02rem; line-height: 1.7;">
+                    Cette plateforme, conçue par l'<strong>{{ APP_AUTHOR }}</strong>, constitue un
+                    outil d'aide à la décision pour les responsables de district : elle restitue
+                    la dynamique spatio-temporelle observée, prévoit l'incidence à court terme par
+                    modèles d'apprentissage automatique (Random Forest et XGBoost) validés en
+                    walk-forward, et signale les districts en alerte selon les seuils recommandés
+                    par l'OMS.
+                </p>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+                <div class="card">
+                    <div class="card-body" style="text-align: center;">
+                        <div style="font-size: 2.5rem;">🛰️</div>
+                        <h4>Données climatiques satellitaires</h4>
+                        <p class="text-muted" style="font-size: 0.88rem;">
+                            Intégration automatique des températures, précipitations et humidité
+                            via l'API NASA POWER.
+                        </p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body" style="text-align: center;">
+                        <div style="font-size: 2.5rem;">🤖</div>
+                        <h4>Modèles ML validés</h4>
+                        <p class="text-muted" style="font-size: 0.88rem;">
+                            Random Forest et XGBoost validés en walk-forward
+                            sur 5 plis annuels (2021-2025).
+                        </p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body" style="text-align: center;">
+                        <div style="font-size: 2.5rem;">🚨</div>
+                        <h4>Alerte épidémique</h4>
+                        <p class="text-muted" style="font-size: 0.88rem;">
+                            Seuils P75 / P90 conformes aux recommandations
+                            OMS pour la surveillance.
+                        </p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body" style="text-align: center;">
+                        <div style="font-size: 2.5rem;">📑</div>
+                        <h4>Rapports automatisés</h4>
+                        <p class="text-muted" style="font-size: 0.88rem;">
+                            Génération de rapports Word et PDF
+                            enrichis par analyse IA.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

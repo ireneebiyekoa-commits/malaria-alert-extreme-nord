@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Prévisions{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="breadcrumb">Accueil / Prévisions</div>
+        <h1>Prévisions de l'incidence palustre</h1>
+        <p class="page-subtitle">
+            Modèles Random Forest et XGBoost — Horizons 1, 2 et 3 mois — Validation walk-forward
+        </p>
+    </div>
+</div>
+
+<div class="container">
+    {% if not ml_ready %}
+    <div class="message message-warning">
+        ⚠️ <strong>Modèles ML non chargés.</strong>
+        Vérifiez que le dossier <code>outputs/models/</code> contient bien
+        <code>random_forest_final.pkl</code>, <code>xgboost_final.pkl</code> et <code>artefacts.pkl</code>.
+        {% if ml_status.errors %}
+            <ul style="margin: 8px 0 0 20px;">
+                {% for e in ml_status.errors %}<li>{{ e }}</li>{% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Sélecteurs -->
+    <div class="filter-bar">
+        <div class="form-row">
+            <div>
+                <label class="form-label" for="sel-district">District</label>
+                <select id="sel-district" class="form-select">
+                    {% for d in districts %}
+                        <option value="{{ d.id }}" data-name="{{ d.nom }}">{{ d.nom_court }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="sel-algo">Algorithme</label>
+                <select id="sel-algo" class="form-select">
+                    {% for code, label in algorithmes %}
+                        <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="sel-horizon">Horizon de prévision</label>
+                <select id="sel-horizon" class="form-select">
+                    <option value="1">1 mois</option>
+                    <option value="2">2 mois</option>
+                    <option value="3" selected>3 mois</option>
+                </select>
+            </div>
+            <div>
+                <button id="btn-predict" class="btn btn-primary">🔮 Générer les prévisions</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panneau 1 : Graphique courbe (auto-affiché à l'ouverture) -->
+    <div class="dashboard-grid-full">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">📈 Courbe de prévision (12 derniers mois observés + horizons prédits)</h3>
+                <span id="predict-info" class="text-muted" style="font-size: 0.85rem;"></span>
+            </div>
+            <div class="card-body chart-body">
+                <div class="chart-wrapper chart-wide chart-tall">
+                    <canvas id="chart-prediction"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panneau 2 : Tableau + Panneau 3 : Performances -->
+    <div class="dashboard-grid">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">📋 Valeurs prévisionnelles</h3>
+                <div class="d-flex gap-2">
+                    <button id="btn-export-excel" class="btn btn-sm btn-outline" title="Excel du district affiché">⬇ Excel</button>
+                    <a href="{% url 'predictions:api_export_excel_global' %}" class="btn btn-sm btn-success" title="Excel pour TOUS les districts (multi-feuilles)">⬇ Excel global</a>
+                    {% if user.is_admin %}
+                    <button id="btn-export-word" class="btn btn-sm btn-yellow">📝 Rapport Word</button>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="table table-compact" id="table-previsions">
+                        <thead>
+                            <tr>
+                                <th>Horizon</th>
+                                <th>Date cible</th>
+                                <th>Incidence prédite</th>
+                                <th>Cas attendus</th>
+                                <th>Seuil P75</th>
+                                <th>Seuil P90</th>
+                                <th>Niveau</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="7" class="text-center text-muted">
+                                Sélectionnez un district et cliquez sur « Générer les prévisions ».
+                            </td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">🎯 Performance du modèle</h3>
+                <span class="text-muted" style="font-size: 0.78rem;">Validation walk-forward (5 plis, 32 districts)</span>
+            </div>
+            <div class="card-body">
+                <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="kpi-card kpi-yellow" style="padding: var(--space-3);">
+                        <div class="kpi-label">RMSE</div>
+                        <div class="kpi-value" id="perf-rmse" style="font-size: 1.4rem;">—</div>
+                    </div>
+                    <div class="kpi-card kpi-yellow" style="padding: var(--space-3);">
+                        <div class="kpi-label">MAE</div>
+                        <div class="kpi-value" id="perf-mae" style="font-size: 1.4rem;">—</div>
+                    </div>
+                    <div class="kpi-card kpi-vert" style="padding: var(--space-3);">
+                        <div class="kpi-label">R²</div>
+                        <div class="kpi-value" id="perf-r2" style="font-size: 1.4rem;">—</div>
+                    </div>
+                </div>
+                <p class="text-muted mt-3" style="font-size: 0.82rem;">
+                    Métriques calculées sur l'agrégation des 5 plis (2021→2025). Elles caractérisent
+                    la qualité prédictive globale du modèle et restent identiques quel que soit le
+                    district sélectionné.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panneau 4 : Analyse IA -->
+    <div class="dashboard-grid-full">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">🤖 Analyse IA — Interprétation et recommandations</h3>
+                <button id="btn-analyse-ia" class="btn btn-sm btn-primary" disabled>Générer l'analyse</button>
+            </div>
+            <div class="card-body">
+                <div id="ai-result" class="ai-box" style="display: none;">
+                    <div class="ai-header">
+                        <span>🧠</span> Analyse générée par <span id="ai-source">Gemini</span>
+                    </div>
+                    <div class="ai-content" id="ai-content"></div>
+                </div>
+                <p id="ai-placeholder" class="text-muted text-center">
+                    Générez d'abord les prévisions, puis cliquez sur « Générer l'analyse » pour obtenir
+                    une interprétation automatique des résultats et des recommandations opérationnelles.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/predictions.js' %}"></script>
+{% endblock %}

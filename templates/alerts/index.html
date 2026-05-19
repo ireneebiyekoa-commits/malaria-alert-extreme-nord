@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Carte d'alerte épidémique{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="breadcrumb">Accueil / Carte d'alerte</div>
+        <h1>Carte d'alerte épidémique</h1>
+        <p class="page-subtitle">
+            Surveillance prévisionnelle des 32 districts — Seuils OMS (P75 / P90)
+        </p>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Filtres -->
+    <div class="filter-bar">
+        <div class="form-row">
+            <div>
+                <label class="form-label" for="alert-algo">Algorithme</label>
+                <select id="alert-algo" class="form-select">
+                    {% for code, label in algorithmes %}
+                        <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="alert-horizon">Horizon</label>
+                <select id="alert-horizon" class="form-select">
+                    <option value="1" selected>1 mois</option>
+                    <option value="2">2 mois</option>
+                    <option value="3">3 mois</option>
+                </select>
+            </div>
+            <div>
+                <button id="btn-update-alertes" class="btn btn-primary">🔄 Actualiser</button>
+            </div>
+            <div>
+                <a id="btn-export-pdf" href="#" class="btn btn-yellow">📄 Export PDF</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Résumé global -->
+    <div class="kpi-grid">
+        <div class="kpi-card kpi-rouge">
+            <div class="kpi-label">Districts en alerte rouge</div>
+            <div class="kpi-value" id="resume-rouge">—</div>
+            <div class="kpi-help">Incidence prédite ≥ P90</div>
+        </div>
+        <div class="kpi-card kpi-orange">
+            <div class="kpi-label">Districts en alerte orange</div>
+            <div class="kpi-value" id="resume-orange">—</div>
+            <div class="kpi-help">P75 ≤ Incidence prédite &lt; P90</div>
+        </div>
+        <div class="kpi-card kpi-vert">
+            <div class="kpi-label">Districts en niveau normal</div>
+            <div class="kpi-value" id="resume-vert">—</div>
+            <div class="kpi-help">Incidence prédite &lt; P75</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Total surveillé</div>
+            <div class="kpi-value" id="resume-total">—</div>
+            <div class="kpi-help">Districts couverts par la prévision</div>
+        </div>
+    </div>
+
+    <!-- Carte + panneau latéral -->
+    <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr;">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">🗺️ Cartographie des alertes</h3>
+                <span class="text-muted" style="font-size: 0.85rem;" id="alert-info"></span>
+            </div>
+            <div class="card-body" style="position: relative;">
+                <div id="map-alerts" class="map-container" style="height: 580px;"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">📋 Districts par sévérité</h3>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <div class="alerts-panel" id="alerts-list" style="max-height: 580px;">
+                    <p class="text-center text-muted" style="padding: var(--space-5);">
+                        Cliquez sur « Actualiser » pour charger les alertes.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="{% static 'js/alerts.js' %}"></script>
+{% endblock %}

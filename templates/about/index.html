@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}À propos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1>À propos du système</h1>
+        <p class="page-subtitle">Présentation, objectifs et contexte institutionnel</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card">
+        <div class="card-body">
+            <h2>Mission</h2>
+            <p>
+                Le <strong>{{ APP_NAME }}</strong> est une plateforme institutionnelle d'aide à la
+                décision conçue par l'<strong>{{ APP_AUTHOR }}</strong>, au sein de la
+                <strong>{{ APP_DELEGATION }}</strong>, sous tutelle du <strong>{{ APP_INSTITUTION }}</strong>.
+            </p>
+            <p>
+                Elle vise à anticiper la dynamique épidémique du paludisme dans les 32 districts
+                sanitaires de la région à l'aide de modèles d'apprentissage automatique
+                (Random Forest et XGBoost), entraînés sur huit années de données épidémiologiques
+                et climatiques (2017-2025).
+            </p>
+
+            <h2 class="mt-5">Composantes fonctionnelles</h2>
+            <ul>
+                <li><strong>Tableau de bord</strong> : indicateurs clés, cartographie d'incidence, séries temporelles, corrélations climat-incidence.</li>
+                <li><strong>Prévisions</strong> : projections à 1, 2 et 3 mois par district, avec analyse IA et génération de rapports Word.</li>
+                <li><strong>Carte d'alerte</strong> : niveaux vert / orange / rouge basés sur les seuils OMS (P75 et P90).</li>
+                <li><strong>Mise à jour des données</strong> : import mensuel + récupération automatique du climat via NASA POWER.</li>
+            </ul>
+
+            <h2 class="mt-5">Stack technique</h2>
+            <table class="table mt-3">
+                <tr><th>Backend</th><td>Python · Django 4.2 (patron MVT)</td></tr>
+                <tr><th>Base de données</th><td>SQLite (dev) / PostgreSQL (production)</td></tr>
+                <tr><th>Machine Learning</th><td>scikit-learn (Random Forest), XGBoost, joblib</td></tr>
+                <tr><th>Visualisation</th><td>Chart.js, Leaflet.js</td></tr>
+                <tr><th>IA générative</th><td>Google Gemini API</td></tr>
+                <tr><th>Données climatiques</th><td>NASA POWER API</td></tr>
+            </table>
+
+            <h2 class="mt-5">Maîtrise d'œuvre</h2>
+            <p>
+                Application conçue, développée et maintenue par l'<strong>{{ APP_AUTHOR }}</strong>,
+                cellule technique de la {{ APP_DELEGATION }}.
+            </p>
+            <p class="text-muted">Version logicielle : {{ APP_VERSION }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,192 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{{ APP_NAME }} — {{ APP_INSTITUTION }}">
+    <title>{% block title %}{{ APP_NAME_SHORT }}{% endblock %} — {{ APP_INSTITUTION }}</title>
+
+    <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}">
+    <link rel="stylesheet" href="{% static 'css/design-system.css' %}">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- Topbar institutionnelle -->
+<div class="topbar">
+    <div class="container">
+        <div class="topbar-left">
+            <span>🇨🇲 République du Cameroun — Paix · Travail · Patrie</span>
+        </div>
+        <div class="topbar-right">
+            <a href="{% url 'about:index' %}">À propos</a>
+            <a href="{% url 'about:guide' %}">Guide</a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'accounts:logout' %}">Déconnexion</a>
+            {% else %}
+                <a href="{% url 'accounts:login' %}">Se connecter</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Header principal -->
+<header class="header">
+    <div class="header-inner">
+        <a href="{% url 'accueil:index' %}" class="brand">
+            <div class="brand-logos">
+                <img src="{% static 'img/logo-minsante.webp' %}" alt="MINSANTE" class="brand-logo" onerror="this.style.display='none'">
+                <img src="{% static 'img/logo-pnlp.webp' %}" alt="PNLP" class="brand-logo" onerror="this.style.display='none'">
+            </div>
+            <div class="brand-text">
+                <p class="brand-title">{{ APP_NAME }}</p>
+                <p class="brand-subtitle">{{ APP_DELEGATION }} · {{ APP_PROGRAMME }}</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Navigation principale -->
+    {% if user.is_authenticated %}
+    <nav class="main-nav">
+        <ul class="nav-list">
+            <li class="nav-item">
+                <a href="{% url 'dashboard:index' %}" class="nav-link {% if request.resolver_match.namespace == 'dashboard' %}active{% endif %}">
+                    <span class="nav-icon">📊</span>Tableau de bord
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'predictions:index' %}" class="nav-link {% if request.resolver_match.namespace == 'predictions' %}active{% endif %}">
+                    <span class="nav-icon">📈</span>Prévisions
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'alerts:index' %}" class="nav-link {% if request.resolver_match.namespace == 'alerts' %}active{% endif %}">
+                    <span class="nav-icon">🗺️</span>Carte d'alerte
+                </a>
+            </li>
+            {% if user.is_admin %}
+            <li class="nav-item">
+                <a href="{% url 'data_management:index' %}" class="nav-link {% if request.resolver_match.namespace == 'data_management' %}active{% endif %}">
+                    <span class="nav-icon">📥</span>Mise à jour
+                </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+                <a href="{% url 'about:index' %}" class="nav-link {% if request.resolver_match.namespace == 'about' %}active{% endif %}">
+                    <span class="nav-icon">ℹ️</span>À propos
+                </a>
+            </li>
+
+            <li class="nav-user">
+                <span>👤 {{ user.get_full_name|default:user.username }}</span>
+                <span class="user-role-badge">{{ user.get_role_display }}</span>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+</header>
+
+<!-- Messages flash -->
+{% if messages %}
+<div class="messages">
+    {% for message in messages %}
+        <div class="message message-{{ message.tags|default:'info' }}">
+            {{ message }}
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Contenu principal -->
+<main>
+    {% block content %}{% endblock %}
+</main>
+
+{% if user.is_authenticated %}
+<!-- ================== Chatbot analytique flottant ================== -->
+<button id="chat-fab" class="chat-fab" type="button" aria-label="Ouvrir l'assistant analytique" title="Assistant analytique">
+    💬
+</button>
+
+<aside id="chat-panel" class="chat-panel" aria-hidden="true">
+    <div class="chat-header">
+        <div>
+            <h4>Assistant analytique</h4>
+            <div class="chat-subtitle">Questions sur les prévisions, alertes et données</div>
+        </div>
+        <button id="chat-close" class="chat-close" type="button" aria-label="Fermer">×</button>
+    </div>
+    <div id="chat-body" class="chat-body">
+        <div class="chat-msg assistant">
+            Bonjour. Vous pouvez me poser des questions sur les prévisions, les niveaux d'alerte,
+            les indicateurs climatiques ou les analyses produites par le système. Par exemple :
+            <em>« Quels districts sont en alerte rouge ce mois-ci ? »</em>
+        </div>
+    </div>
+    <form id="chat-form" class="chat-input-row">
+        <textarea id="chat-input" placeholder="Posez votre question…" rows="2"></textarea>
+        <button type="submit" id="chat-send">Envoyer</button>
+    </form>
+</aside>
+<script src="{% static 'js/chatbot.js' %}"></script>
+{% endif %}
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div>
+                <h4>{{ APP_NAME }}</h4>
+                <p style="font-size: 0.88rem; line-height: 1.6;">
+                    Plateforme institutionnelle de surveillance et de prévision épidémique,
+                    développée par l'{{ APP_AUTHOR }} pour la {{ APP_DELEGATION }},
+                    sous tutelle du {{ APP_INSTITUTION }}.
+                </p>
+            </div>
+            <div>
+                <h4>Navigation</h4>
+                <p><a href="{% url 'accueil:index' %}">Accueil</a></p>
+                {% if user.is_authenticated %}
+                <p><a href="{% url 'dashboard:index' %}">Tableau de bord</a></p>
+                <p><a href="{% url 'predictions:index' %}">Prévisions</a></p>
+                <p><a href="{% url 'alerts:index' %}">Carte d'alerte</a></p>
+                {% endif %}
+            </div>
+            <div>
+                <h4>Ressources</h4>
+                <p><a href="{% url 'about:methodologie' %}">Méthodologie</a></p>
+                <p><a href="{% url 'about:guide' %}">Guide d'utilisation</a></p>
+                <p><a href="https://www.minsante.cm" target="_blank" rel="noopener">MINSANTE</a></p>
+            </div>
+            <div>
+                <h4>Contact</h4>
+                <p style="font-size: 0.88rem; line-height: 1.7;">
+                    {{ APP_DELEGATION }}<br>
+                    {{ APP_PROGRAMME }}<br>
+                    Maroua — Cameroun<br>
+                    <span class="text-muted">Version {{ APP_VERSION }}</span>
+                </p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span class="footer-flag">
+                <span class="green"></span><span class="red"></span><span class="yellow"></span>
+            </span>
+            © {% now "Y" %} {{ APP_INSTITUTION }} — Tous droits réservés. Document confidentiel à usage interne.
+        </div>
+    </div>
+</footer>
+
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

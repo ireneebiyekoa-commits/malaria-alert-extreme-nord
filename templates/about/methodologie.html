@@ -1,0 +1,483 @@
+{% extends 'base.html' %}
+
+{% block title %}Méthodologie{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="breadcrumb">Accueil / À propos / Méthodologie</div>
+        <h1 class="font-serif">Méthodologie scientifique</h1>
+        <p class="page-subtitle">
+            Démarche statistique, choix algorithmiques et protocole de validation
+        </p>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- ============================================================
+         1. Données mobilisées
+         ============================================================ -->
+    <div class="card mb-5">
+        <div class="card-header">
+            <h3 class="card-title">1. Données mobilisées</h3>
+        </div>
+        <div class="card-body">
+            <p>
+                Le système s'appuie sur quatre sources de données structurées au pas mensuel,
+                sur la période <strong>janvier 2017 – décembre 2025</strong>, soit 108 mois
+                couvrant l'ensemble des 32 districts sanitaires de la région.
+            </p>
+
+            <table class="table mt-3">
+                <thead>
+                    <tr><th>Source</th><th>Variables</th><th>Fréquence</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Épidémiologiques</strong> (DHIS2)</td>
+                        <td>Nombre de cas confirmés (TDR + microscopie)</td>
+                        <td>Mensuelle, par district</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Climatiques</strong> (NASA POWER)</td>
+                        <td>Température moyenne (°C), humidité relative (%), précipitations (mm)</td>
+                        <td>Mensuelle, par coordonnée</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Démographiques</strong> (INS Cameroun)</td>
+                        <td>Population projetée par aire sanitaire</td>
+                        <td>Annuelle</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Géographiques</strong> (cartographie sanitaire)</td>
+                        <td>Polygones des 32 districts (GeoJSON)</td>
+                        <td>Statique</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p class="mt-3 text-muted" style="font-size: 0.9rem;">
+                La base finale couplée comporte <strong>3 456 observations</strong>
+                (32 districts × 108 mois), enrichies de 48 variables explicatives après
+                ingénierie de caractéristiques.
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         2. Variable cible : incidence palustre
+         ============================================================ -->
+    <div class="card mb-5">
+        <div class="card-header">
+            <h3 class="card-title">2. Variable cible : l'incidence palustre</h3>
+        </div>
+        <div class="card-body">
+            <p>
+                La variable à prédire est l'<strong>incidence mensuelle pour 1 000 habitants</strong>,
+                indicateur standard de surveillance épidémiologique recommandé par l'OMS.
+                Elle est calculée par district <em>d</em> et mois <em>t</em> selon :
+            </p>
+            <div style="text-align:center; padding: var(--space-4); background: var(--gray-50); border-radius: var(--radius-md); margin: var(--space-3) 0; font-family: var(--font-serif); font-size: 1.1rem;">
+                Incidence(<em>d</em>, <em>t</em>) =
+                <span style="display:inline-block; text-align:center; vertical-align:middle;">
+                    <span style="border-bottom: 1px solid #333; padding: 0 8px;">Cas confirmés(<em>d</em>, <em>t</em>)</span><br>
+                    <span style="padding: 0 8px;">Population(<em>d</em>)</span>
+                </span>
+                &nbsp;× 1 000
+            </div>
+            <p>
+                Cette transformation normalise les comparaisons inter-districts (taille différente
+                des populations) et aligne l'unité d'analyse avec les seuils d'alerte
+                préconisés par l'OMS.
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         3. Ingénierie des caractéristiques (Feature engineering)
+         ============================================================ -->
+    <div class="card mb-5">
+        <div class="card-header">
+            <h3 class="card-title">3. Ingénierie des caractéristiques</h3>
+        </div>
+        <div class="card-body">
+            <p>
+                À partir des variables brutes, 48 caractéristiques explicatives ont été
+                construites pour capturer les déterminants épidémiologiques et climatiques
+                du paludisme :
+            </p>
+
+            <h4 class="mt-4">3.1 — Variables courantes (3)</h4>
+            <p>Mesures concomitantes : <code>precip_mensuel</code>, <code>temp_moy</code>, <code>humidite</code>.</p>
+
+            <h4 class="mt-4">3.2 — Variables retardées (lags) (8)</h4>
+            <p>
+                Pour intégrer la <em>dynamique temporelle</em>, on inclut les valeurs passées
+                de l'incidence et du climat :
+            </p>
+            <ul>
+                <li><code>inc_lag1, inc_lag2, inc_lag3</code> : incidence des 1, 2 et 3 mois précédents (auto-régression)</li>
+                <li><code>precip_lag1, precip_lag2</code> : pluies des 1 et 2 mois précédents (gîtes larvaires)</li>
+                <li><code>temp_lag1, temp_lag2</code> : températures décalées (cycle sporogonique du Plasmodium)</li>
+                <li><code>hum_lag1, hum_lag2</code> : humidité décalée (survie des moustiques)</li>
+            </ul>
+            <p class="text-muted" style="font-size: 0.92rem;">
+                Le décalage de 1 à 2 mois reflète le délai biologique entre l'exposition
+                climatique et la manifestation clinique des cas.
+            </p>
+
+            <h4 class="mt-4">3.3 — Moyennes glissantes (2)</h4>
+            <p>
+                <code>precip_roll2</code> et <code>precip_roll3</code> : moyennes des
+                précipitations sur 2 et 3 mois, capturant l'effet cumulé des pluies sur
+                la prolifération vectorielle.
+            </p>
+
+            <h4 class="mt-4">3.4 — Composantes saisonnières (2)</h4>
+            <p>
+                Encodage cyclique du mois calendaire par transformation sinus-cosinus :
+            </p>
+            <div style="text-align:center; padding: var(--space-3); background: var(--gray-50); border-radius: var(--radius-md); margin: var(--space-3) 0;">
+                <code>mois_sin = sin(2π × mois / 12)</code> &nbsp;|&nbsp;
+                <code>mois_cos = cos(2π × mois / 12)</code>
+            </div>
+            <p>
+                Cette représentation préserve la continuité cyclique (janvier et décembre
+                sont géographiquement proches dans l'espace transformé).
+            </p>
+
+            <h4 class="mt-4">3.5 — Terme d'interaction climatique (1)</h4>
+            <p>
+                <code>precip_lag1_x_temp_lag1</code> : produit des précipitations et températures
+                retardées d'un mois. Ce terme capture l'effet conjoint <em>« pluie + chaleur »</em>,
+                conditions optimales de transmission.
+            </p>
+
+            <h4 class="mt-4">3.6 — Encodage des districts (31)</h4>
+            <p>
+                Variables indicatrices <em>one-hot</em> pour 31 districts (le 32ᵉ étant
+                pris comme référence). Cet encodage permet aux modèles d'apprendre des
+                spécificités épidémiologiques propres à chaque district sans imposer
+                d'ordre arbitraire.
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         4. Modèles d'apprentissage automatique
+         ============================================================ -->
+    <div class="card mb-5">
+        <div class="card-header">
+            <h3 class="card-title">4. Modèles d'apprentissage automatique</h3>
+        </div>
+        <div class="card-body">
+            <p>
+                Deux algorithmes complémentaires ont été retenus pour leur robustesse,
+                leur capacité à modéliser des relations non linéaires et leur interprétabilité
+                par l'importance de variables.
+            </p>
+
+            <h4 class="mt-4">4.1 — Random Forest (Breiman, 2001)</h4>
+            <p>
+                Le <strong>Random Forest</strong> est un ensemble d'arbres de décision indépendants,
+                construits par <em>bagging</em> (bootstrap aggregating). Le principe est le suivant :
+            </p>
+            <ol>
+                <li>Tirer <em>B</em> échantillons bootstrap des données d'apprentissage.</li>
+                <li>Pour chaque échantillon, construire un arbre de régression en ne sélectionnant
+                    qu'un sous-ensemble aléatoire de variables à chaque nœud (décorrélation).</li>
+                <li>La prévision finale est la moyenne des <em>B</em> arbres.</li>
+            </ol>
+            <p>
+                Cette approche réduit la variance par moyennage et résiste au sur-apprentissage.
+                Elle convient particulièrement aux <em>relations non linéaires</em> et aux
+                <em>interactions entre variables</em>, fréquentes en épidémiologie.
+            </p>
+            <p><strong>Hyperparamètres optimaux (recherche par RandomizedSearchCV)</strong> :</p>
+            <table class="table table-compact" style="max-width: 480px;">
+                <tr><th>Paramètre</th><th>Valeur</th></tr>
+                <tr><td>n_estimators</td><td>400</td></tr>
+                <tr><td>max_depth</td><td>40</td></tr>
+                <tr><td>min_samples_split</td><td>5</td></tr>
+                <tr><td>min_samples_leaf</td><td>5</td></tr>
+                <tr><td>max_features</td><td>0.8</td></tr>
+                <tr><td>bootstrap</td><td>True</td></tr>
+            </table>
+
+            <h4 class="mt-4">4.2 — XGBoost (Chen & Guestrin, 2016)</h4>
+            <p>
+                <strong>XGBoost</strong> (eXtreme Gradient Boosting) est une implémentation
+                optimisée du <em>gradient boosting</em>. Contrairement au bagging du Random
+                Forest, le boosting construit les arbres <em>séquentiellement</em>, chaque
+                nouvel arbre corrigeant les erreurs des précédents :
+            </p>
+            <ol>
+                <li>Initialiser une prédiction par défaut (souvent la moyenne).</li>
+                <li>À chaque itération <em>k</em> : ajuster un nouvel arbre sur les
+                    <em>résidus</em> (erreurs) du modèle courant, pondérés par le gradient
+                    de la fonction de perte.</li>
+                <li>Mettre à jour le modèle : <code>F<sub>k</sub>(x) = F<sub>k−1</sub>(x) + η × h<sub>k</sub>(x)</code>
+                    où <code>η</code> est le taux d'apprentissage.</li>
+            </ol>
+            <p>
+                XGBoost ajoute deux innovations majeures :
+            </p>
+            <ul>
+                <li><strong>Régularisation L1 et L2</strong> sur les feuilles des arbres : pénalise
+                    la complexité du modèle (équivaut à un compromis biais-variance contrôlé).</li>
+                <li><strong>Approximation pondérée du quantile</strong> et <strong>parallélisation</strong>
+                    des splits : entraînement très rapide même sur de grandes bases.</li>
+            </ul>
+            <p>
+                XGBoost capture mieux les <em>dépendances séquentielles</em> et les
+                <em>signaux faibles</em> que le Random Forest, ce qui est particulièrement
+                utile pour les horizons longs (h = 2 ou 3 mois) où le bruit est plus
+                important.
+            </p>
+            <p><strong>Hyperparamètres optimaux (RandomizedSearchCV)</strong> :</p>
+            <table class="table table-compact" style="max-width: 480px;">
+                <tr><th>Paramètre</th><th>Valeur</th></tr>
+                <tr><td>n_estimators</td><td>500</td></tr>
+                <tr><td>max_depth</td><td>7</td></tr>
+                <tr><td>learning_rate (η)</td><td>0.05</td></tr>
+                <tr><td>subsample</td><td>0.8</td></tr>
+                <tr><td>colsample_bytree</td><td>1.0</td></tr>
+                <tr><td>min_child_weight</td><td>3</td></tr>
+                <tr><td>reg_lambda (L2)</td><td>1</td></tr>
+                <tr><td>reg_alpha (L1)</td><td>0</td></tr>
+            </table>
+
+            <h4 class="mt-4">4.3 — Pourquoi pas un modèle classique (ARIMA, régression linéaire) ?</h4>
+            <p>
+                Les modèles statistiques traditionnels ne capturent pas efficacement :
+            </p>
+            <ul>
+                <li>Les <strong>interactions non linéaires</strong> climat × territoire (effet seuil
+                    de la pluviométrie, par exemple) ;</li>
+                <li>Les <strong>hétérogénéités inter-districts</strong> (zones lacustres vs zones
+                    montagneuses) ;</li>
+                <li>Les <strong>changements de régime saisonniers</strong> (mauvaise/bonne saison).</li>
+            </ul>
+            <p>
+                Les ensembles d'arbres (RF, XGB) traitent naturellement ces phénomènes, sans
+                hypothèses paramétriques restrictives.
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         5. Validation walk-forward
+         ============================================================ -->
+    <div class="card mb-5">
+        <div class="card-header">
+            <h3 class="card-title">5. Protocole de validation walk-forward</h3>
+        </div>
+        <div class="card-body">
+            <p>
+                Les données étant temporelles, une validation croisée classique (k-fold)
+                introduirait une <em>fuite d'information</em> du futur vers le passé. Nous
+                avons donc adopté la <strong>validation walk-forward</strong>, qui simule
+                fidèlement un déploiement réel : à chaque pli, l'entraînement n'utilise que
+                des données antérieures au test.
+            </p>
+
+            <table class="table mt-3">
+                <thead>
+                    <tr><th>Pli</th><th>Période d'entraînement</th><th>Période de test</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>1</td><td>2017 – 2020</td><td>2021</td></tr>
+                    <tr><td>2</td><td>2017 – 2021</td><td>2022</td></tr>
+                    <tr><td>3</td><td>2017 – 2022</td><td>2023</td></tr>
+                    <tr><td>4</td><td>2017 – 2023</td><td>2024</td></tr>
+                    <tr><td>5</td><td>2017 – 2024</td><td>2025</td></tr>
+                </tbody>
+            </table>
+
+            <p>
+                La fenêtre d'entraînement est <em>élargie</em> à chaque pli (et non glissante),
+                de façon à exploiter toute l'information passée disponible.
+            </p>
+            <p>
+                Pour chaque pli, on prédit aux <strong>horizons h = 1, 2 et 3 mois</strong>,
+                puis on compare les prévisions aux valeurs observées du test.
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         6. Substitution récursive
+         ============================================================ -->
+    <div class="card mb-5">
+        <div class="card-header">
+            <h3 class="card-title">6. Substitution récursive pour les horizons multiples</h3>
+        </div>
+        <div class="card-body">
+            <p>
+                Le modèle est entraîné une seule fois pour prédire l'incidence à un horizon
+                de <em>1 mois</em>. Pour les horizons 2 et 3 mois, la stratégie de
+                <strong>substitution récursive</strong> est employée :
+            </p>
+            <ul>
+                <li>Pour h = 2 : on remplace <code>inc_lag1</code> par la prévision de h = 1 ;</li>
+                <li>Pour h = 3 : on remplace <code>inc_lag1</code> par la prévision de h = 2,
+                    et <code>inc_lag2</code> par la prévision de h = 1.</li>
+            </ul>
+            <p>
+                Les covariables climatiques futures (inconnues au moment de la prévision) sont
+                approchées par la <strong>climatologie mensuelle</strong> de référence du
+                district (moyenne historique du même mois calendaire). Cette approche assume
+                que les variations interannuelles du climat sont faibles par rapport au cycle
+                saisonnier, hypothèse vérifiée en zone sahélienne.
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         7. Métriques d'évaluation
+         ============================================================ -->
+    <div class="card mb-5">
+        <div class="card-header">
+            <h3 class="card-title">7. Métriques d'évaluation</h3>
+        </div>
+        <div class="card-body">
+            <p>Trois métriques complémentaires sont utilisées :</p>
+
+            <h4 class="mt-3">RMSE (Root Mean Square Error)</h4>
+            <p>
+                Racine de l'erreur quadratique moyenne. Pénalise davantage les grandes erreurs.
+                Exprimée dans l'unité de la cible (cas / 1 000 hab.).
+            </p>
+
+            <h4 class="mt-3">MAE (Mean Absolute Error)</h4>
+            <p>
+                Erreur absolue moyenne. Moins sensible aux valeurs aberrantes que la RMSE.
+                Représente l'écart typique entre prévision et observation.
+            </p>
+
+            <h4 class="mt-3">R² (coefficient de détermination)</h4>
+            <p>
+                Part de la variance de la cible expliquée par le modèle. Varie de 0 (modèle inutile)
+                à 1 (prévision parfaite). Un R² > 0,7 traduit une excellente capacité prédictive.
+            </p>
+
+            <h4 class="mt-4">Résultats officiels</h4>
+            <p>
+                Les performances obtenues sur l'ensemble des 5 plis de validation walk-forward
+                (n = 1 600 prédictions par fold) sont les suivantes :
+            </p>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Algorithme</th><th>Horizon</th>
+                            <th class="text-center">RMSE</th>
+                            <th class="text-center">MAE</th>
+                            <th class="text-center">R²</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td rowspan="3"><strong>Random Forest</strong></td>
+                            <td>1 mois</td><td class="text-center">3,23</td><td class="text-center">2,04</td>
+                            <td class="text-center"><span class="badge badge-vert">0,783</span></td></tr>
+                        <tr><td>2 mois</td><td class="text-center">4,35</td><td class="text-center">2,77</td>
+                            <td class="text-center"><span class="badge badge-orange">0,618</span></td></tr>
+                        <tr><td>3 mois</td><td class="text-center">5,05</td><td class="text-center">3,22</td>
+                            <td class="text-center"><span class="badge badge-orange">0,506</span></td></tr>
+                        <tr style="border-top: 2px solid var(--minsante-blue);">
+                            <td rowspan="3"><strong>XGBoost</strong></td>
+                            <td>1 mois</td><td class="text-center">3,21</td><td class="text-center">2,04</td>
+                            <td class="text-center"><span class="badge badge-vert">0,783</span></td></tr>
+                        <tr><td>2 mois</td><td class="text-center">4,04</td><td class="text-center">2,63</td>
+                            <td class="text-center"><span class="badge badge-vert">0,665</span></td></tr>
+                        <tr><td>3 mois</td><td class="text-center">4,54</td><td class="text-center">2,97</td>
+                            <td class="text-center"><span class="badge badge-orange">0,598</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="mt-3 text-muted" style="font-size: 0.92rem;">
+                <strong>Lecture</strong> : XGBoost surpasse Random Forest dès l'horizon de
+                2 mois (R² = 0,665 vs 0,618), grâce à sa capacité à modéliser les dépendances
+                séquentielles. À 3 mois, l'incertitude augmente naturellement (R² ≈ 0,5 – 0,6),
+                ce qui justifie l'usage prudent des prévisions long terme — d'où le triptyque
+                d'horizons (1, 2 et 3 mois) plutôt qu'un horizon unique.
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         8. Seuils d'alerte épidémique
+         ============================================================ -->
+    <div class="card mb-5">
+        <div class="card-header">
+            <h3 class="card-title">8. Seuils d'alerte épidémique (OMS, 2014)</h3>
+        </div>
+        <div class="card-body">
+            <p>
+                Conformément aux recommandations de l'<strong>Organisation Mondiale de la
+                Santé</strong> publiées dans <em>« Disease Surveillance for Malaria Control »</em>
+                (OMS, 2012-2014), les seuils d'alerte sont définis par les percentiles 75 et 90
+                de la distribution historique d'incidence, calculés <strong>par district</strong>
+                et <strong>par mois calendaire</strong> :
+            </p>
+            <ul>
+                <li><span class="badge badge-vert">VERT — Normal</span> &nbsp;Incidence prédite < P75</li>
+                <li><span class="badge badge-orange">ORANGE — Élevé</span> &nbsp;P75 ≤ Incidence prédite < P90</li>
+                <li><span class="badge badge-rouge">ROUGE — Critique</span> &nbsp;Incidence prédite ≥ P90</li>
+            </ul>
+            <p>
+                Cette approche, dite « méthode des percentiles », a deux avantages :
+            </p>
+            <ol>
+                <li>Elle respecte la <strong>saisonnalité locale</strong> : un seuil rouge en
+                    saison sèche peut être plus bas qu'en saison des pluies, ce qui évite
+                    les fausses alertes saisonnières.</li>
+                <li>Elle s'adapte à chaque district : les zones traditionnellement plus
+                    affectées ont des seuils plus élevés, ce qui empêche de saturer le
+                    système d'alertes inutiles.</li>
+            </ol>
+            <p>
+                Au total, <strong>384 seuils</strong> (32 districts × 12 mois) sont calculés
+                et stockés en base. Ils sont recalculés à chaque import de nouvelles données.
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         9. Limites et perspectives
+         ============================================================ -->
+    <div class="card mb-5">
+        <div class="card-header">
+            <h3 class="card-title">9. Limites méthodologiques et perspectives</h3>
+        </div>
+        <div class="card-body">
+            <h4>Limites</h4>
+            <ul>
+                <li><strong>Sous-déclaration potentielle</strong> : les cas confirmés ne reflètent
+                    que la fréquentation des formations sanitaires, et non l'incidence vraie en
+                    communauté.</li>
+                <li><strong>Hypothèse climatologique</strong> : la substitution du climat futur
+                    par la climatologie peut sous-estimer l'effet des années exceptionnelles
+                    (El Niño, sécheresses sévères).</li>
+                <li><strong>Pas d'interaction modélisée avec la chimioprévention</strong> : les
+                    campagnes CPS, MILDA et autres interventions de santé publique ne sont pas
+                    explicitement encodées en variables.</li>
+            </ul>
+
+            <h4 class="mt-4">Perspectives d'amélioration</h4>
+            <ul>
+                <li>Intégration de variables programmatiques (calendrier des CPS, couverture en MILDA).</li>
+                <li>Modèles bayésiens hiérarchiques pour quantifier l'incertitude par intervalle de
+                    crédibilité.</li>
+                <li>Couplage avec un modèle entomologique (LSTM ou réseau de capteurs météorologiques
+                    locaux) pour les zones à très haute transmission.</li>
+            </ul>
+        </div>
+    </div>
+
+    <p class="text-center text-muted mb-5" style="font-size: 0.85rem;">
+        Méthodologie validée par l'{{ APP_AUTHOR }} de la {{ APP_DELEGATION }}.
+    </p>
+</div>
+{% endblock %}
