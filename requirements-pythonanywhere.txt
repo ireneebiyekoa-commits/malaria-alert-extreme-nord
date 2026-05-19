@@ -35,8 +35,9 @@ python-docx==1.1.2
 # PDF
 reportlab==4.2.5
 
-# HTTP (NASA POWER)
+# HTTP (NASA POWER + Gemini REST direct, sans SDK lourd)
 requests==2.32.3
 
-# IA générative
-google-generativeai==0.8.3
+# Pas de SDK google-generativeai : on utilise l'API REST de Gemini
+# directement avec `requests` (cf. apps/predictions/ai_analyzer.py).
+# Cela économise ~130 Mo (grpcio + protobuf + pydantic + google-api-client).

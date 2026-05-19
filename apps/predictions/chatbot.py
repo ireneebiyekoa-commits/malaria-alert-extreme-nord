@@ -1,31 +1,25 @@
 """
-Espace de discussion interactif avec l'assistant analytique.
+Assistant analytique interactif (Gemini REST direct).
 
-L'assistant est STRICTEMENT limité au périmètre du projet :
-  - Résultats analytiques
-  - Prévisions épidémiologiques
-  - Indicateurs climatiques
-  - Niveaux d'alerte (vert / orange / rouge)
-  - Tableaux, graphiques, cartes générés par le système
-  - Surveillance du paludisme dans l'Extrême-Nord
+L'assistant est STRICTEMENT limité au périmètre du projet : prévisions,
+alertes, indicateurs climatiques, surveillance du paludisme dans la
+région de l'Extrême-Nord. Hors périmètre, il refuse poliment. Il ne
+dévoile jamais sa nature technique ni l'organisation prestataire.
 
-Hors de ce périmètre, il refuse poliment. Il ne dévoile jamais sa nature
-(modèle, technologie sous-jacente, organisation prestataire).
+Implémentation REST directe (pas de SDK google-generativeai) pour
+préserver l'empreinte disque sur les hébergeurs gratuits limités.
 """
 import logging
 from typing import Any, Dict, List, Optional
 
-from django.db.models import Avg, Max, Sum
+from django.db.models import Avg, Max
 
 from apps.core.models import (District, Observation, Performance, Prevision,
                               SeuilAlerte)
 
-from .ai_analyzer import _get_api_key, _get_model_name
+from .ai_analyzer import call_gemini_rest
 
 logger = logging.getLogger(__name__)
-
-_CHAT_CLIENT = None
-_CHAT_INIT_ERROR: Optional[str] = None
 
 
 # ============================================================
@@ -62,14 +56,12 @@ def _build_context_snapshot(district_focus: Optional[str] = None) -> str:
     """Construit un résumé textuel des données récentes pour ancrer le chatbot."""
     parts = []
 
-    # Stats régionales
     total_obs = Observation.objects.count()
     derniere_obs = Observation.objects.order_by('-date').first()
     if derniere_obs:
         parts.append(f"Période couverte : jusqu'à {derniere_obs.date.strftime('%B %Y')}.")
         parts.append(f"Nombre total d'observations en base : {total_obs}.")
 
-    # Dernière prévision globale
     max_origin = Prevision.objects.aggregate(m=Max('date_origine'))['m']
     if max_origin:
         per_niveau = (Prevision.objects
@@ -81,7 +73,6 @@ def _build_context_snapshot(district_focus: Optional[str] = None) -> str:
         parts.append(f"Dernières prévisions (h=1, origine {max_origin}) : "
                      f"{nb_r} districts rouge / {nb_o} orange / {nb_v} vert.")
 
-    # Focus district si demandé
     if district_focus:
         try:
             d = District.objects.filter(nom__icontains=district_focus).first()
@@ -94,7 +85,6 @@ def _build_context_snapshot(district_focus: Optional[str] = None) -> str:
                 incs = [round(o.incidence, 2) for o in reversed(obs_list)]
                 parts.append(f"District {d.nom_court} : 6 dernières incidences = {incs} /1000 hab.")
 
-    # Algorithmes disponibles
     perfs = Performance.objects.values('algorithme').annotate(
         rmse_moy=Avg('rmse'), r2_moy=Avg('r2')
     )
@@ -103,33 +93,6 @@ def _build_context_snapshot(district_focus: Optional[str] = None) -> str:
                      f"R² moyen = {p['r2_moy']:.3f}.")
 
     return "\n".join(parts) if parts else "Aucune donnée résumée disponible."
-
-
-def _init_chat_client():
-    """Initialise le client Gemini pour le chatbot."""
-    global _CHAT_CLIENT, _CHAT_INIT_ERROR
-    if _CHAT_CLIENT is not None:
-        return _CHAT_CLIENT
-
-    api_key = _get_api_key()
-    if not api_key:
-        _CHAT_INIT_ERROR = "Configuration IA manquante"
-        return None
-
-    try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        model_name = _get_model_name()
-        _CHAT_CLIENT = genai.GenerativeModel(
-            model_name=model_name,
-            system_instruction=SYSTEM_PROMPT,
-        )
-        logger.info(f"Client chatbot initialisé (modèle: {model_name})")
-        return _CHAT_CLIENT
-    except Exception as exc:
-        _CHAT_INIT_ERROR = str(exc)
-        logger.error(f"Échec init chatbot : {exc}")
-        return None
 
 
 def repondre(
@@ -142,11 +105,11 @@ def repondre(
 
     Args:
         question: La question posée par l'utilisateur
-        historique: [{'role': 'user' | 'assistant', 'content': '...'}, ...] (max 10 derniers échanges)
+        historique: [{'role': 'user' | 'assistant', 'content': '...'}, ...] (max 10 derniers)
         contexte_district: Nom du district éventuellement sélectionné
 
     Returns:
-        {'success': bool, 'reponse': str, 'erreur': str | None}
+        {'success': bool, 'reponse': str, 'source': str, 'erreur': str | None}
     """
     question = (question or '').strip()
     if not question:
@@ -159,28 +122,6 @@ def repondre(
             'erreur': 'question_too_long',
         }
 
-    client = _init_chat_client()
-    if client is None:
-        return {
-            'success': True,
-            'reponse': (
-                "Le service de discussion analytique n'est temporairement pas disponible. "
-                "Vous pouvez consulter directement le tableau de bord, la page Prévisions "
-                "ou la carte d'alerte pour obtenir les informations recherchées."
-            ),
-            'source': 'fallback',
-            'erreur': _CHAT_INIT_ERROR,
-        }
-
-    # Construction de l'historique au format Gemini
-    history_msgs = []
-    for msg in (historique or [])[-10:]:
-        role = 'user' if msg.get('role') == 'user' else 'model'
-        content = (msg.get('content') or '').strip()
-        if content:
-            history_msgs.append({'role': role, 'parts': [content]})
-
-    # Ajout du contexte courant en préambule de la question
     snapshot = _build_context_snapshot(contexte_district)
     enriched_question = (
         f"[Contexte courant du système]\n{snapshot}\n\n"
@@ -188,21 +129,37 @@ def repondre(
     )
 
     try:
-        chat = client.start_chat(history=history_msgs)
-        response = chat.send_message(enriched_question)
+        text = call_gemini_rest(
+            user_message=enriched_question,
+            system_prompt=SYSTEM_PROMPT,
+            history=historique,
+            timeout=30,
+        )
         return {
             'success': True,
-            'reponse': response.text.strip(),
+            'reponse': text,
             'source': 'gemini',
             'erreur': None,
         }
-    except Exception as exc:
-        logger.error(f"Erreur chatbot Gemini : {exc}")
+    except RuntimeError as exc:
+        msg = str(exc)
+        logger.warning(f"Chatbot indisponible : {msg}")
+        # Fallback minimal : message clair, orientation vers les modules
+        if 'quota' in msg.lower() or '429' in msg:
+            fallback = (
+                "Le service d'analyse interactive est momentanément saturé. "
+                "Vous pouvez consulter directement le tableau de bord, la page Prévisions "
+                "ou la carte d'alerte pour obtenir les informations recherchées."
+            )
+        else:
+            fallback = (
+                "Le service de discussion analytique n'est pas disponible actuellement. "
+                "Les modules d'analyse (tableau de bord, prévisions, carte d'alerte) "
+                "restent pleinement opérationnels."
+            )
         return {
             'success': False,
-            'reponse': (
-                "Je rencontre une difficulté technique pour répondre à votre question. "
-                "Vous pouvez retenter ou consulter directement les modules d'analyse."
-            ),
-            'erreur': str(exc),
+            'reponse': fallback,
+            'source': 'fallback',
+            'erreur': msg,
         }

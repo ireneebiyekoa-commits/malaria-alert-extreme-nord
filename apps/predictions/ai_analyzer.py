@@ -1,25 +1,38 @@
 """
-Module d'analyse IA — Google Gemini API.
-Génère des interprétations automatiques des résultats de prévision.
+Module d'analyse IA — Google Gemini REST API (sans SDK).
+
+Cette implémentation utilise directement l'API REST de Gemini via la
+bibliothèque `requests` (déjà présente dans le projet), ce qui évite
+d'avoir à installer le SDK `google-generativeai` (qui pèse ~130 Mo
+avec ses dépendances grpcio/protobuf/pydantic/google-api-client).
+
+Bénéfice : compatible avec les hébergeurs gratuits limités en disque
+(PythonAnywhere Free Tier 512 Mo, etc.).
 """
+import json
 import logging
+import os
 from typing import Any, Dict, List, Optional
 
+import requests
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-# Initialisation conditionnelle
-_GEMINI_CLIENT = None
+# Endpoint REST Gemini
+_GEMINI_ENDPOINT = (
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+    "{model}:generateContent?key={api_key}"
+)
+
 _GEMINI_INIT_ERROR: Optional[str] = None
 
 
+# ============================================================
+# Lecture robuste de la configuration
+# ============================================================
 def _get_api_key() -> str:
-    """
-    Lecture robuste de la clé Gemini.
-    Ordre : settings → variable d'environnement → fichier .env.
-    """
-    # 1) Django settings
+    """Ordre : settings -> variable d'env -> fichier .env."""
     try:
         key = (settings.GEMINI_API_KEY or '').strip()
         if key:
@@ -27,13 +40,10 @@ def _get_api_key() -> str:
     except Exception:
         pass
 
-    # 2) Variable d'environnement directe
-    import os
     key = (os.environ.get('GEMINI_API_KEY') or '').strip()
     if key:
         return key
 
-    # 3) Fichier .env (lecture brute, dernier recours)
     try:
         env_path = settings.BASE_DIR / '.env'
         if env_path.exists():
@@ -54,37 +64,87 @@ def _get_model_name() -> str:
             return m
     except Exception:
         pass
-    import os
     return os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash').strip()
 
 
-def _init_gemini():
-    """Initialise le client Gemini si la clé est disponible."""
-    global _GEMINI_CLIENT, _GEMINI_INIT_ERROR
+# ============================================================
+# Appel REST Gemini
+# ============================================================
+def call_gemini_rest(
+    user_message: str,
+    system_prompt: Optional[str] = None,
+    history: Optional[List[Dict[str, str]]] = None,
+    timeout: int = 30,
+) -> str:
+    """
+    Appelle l'API REST de Gemini et retourne le texte de réponse.
 
-    if _GEMINI_CLIENT is not None:
-        return _GEMINI_CLIENT
+    Args:
+        user_message: question / consigne courante
+        system_prompt: instructions système (rôle, contraintes)
+        history: [{'role': 'user' | 'assistant', 'content': '...'}, ...]
+        timeout: timeout HTTP en secondes
+
+    Raises:
+        RuntimeError: si la clé est absente, l'appel échoue ou la réponse est vide.
+    """
+    global _GEMINI_INIT_ERROR
 
     api_key = _get_api_key()
-    model_name = _get_model_name()
-
     if not api_key:
         _GEMINI_INIT_ERROR = "Clé API Gemini non configurée"
-        logger.warning("Gemini désactivé : aucune clé trouvée dans settings/env/.env")
-        return None
+        raise RuntimeError(_GEMINI_INIT_ERROR)
+
+    model = _get_model_name()
+    url = _GEMINI_ENDPOINT.format(model=model, api_key=api_key)
+
+    # Construction du payload
+    contents: List[Dict[str, Any]] = []
+    for msg in (history or []):
+        role = 'user' if msg.get('role') == 'user' else 'model'
+        content = (msg.get('content') or '').strip()
+        if content:
+            contents.append({'role': role, 'parts': [{'text': content}]})
+
+    # Question courante
+    contents.append({'role': 'user', 'parts': [{'text': user_message}]})
+
+    payload: Dict[str, Any] = {'contents': contents}
+    if system_prompt:
+        payload['systemInstruction'] = {'parts': [{'text': system_prompt}]}
 
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        _GEMINI_CLIENT = genai.GenerativeModel(model_name)
-        logger.info(f"Client Gemini initialisé (modèle : {model_name})")
-        return _GEMINI_CLIENT
-    except Exception as exc:
-        _GEMINI_INIT_ERROR = str(exc)
-        logger.error(f"Échec initialisation Gemini : {exc}")
-        return None
+        resp = requests.post(url, json=payload, timeout=timeout)
+    except requests.exceptions.RequestException as exc:
+        raise RuntimeError(f"Erreur réseau Gemini : {exc}") from exc
+
+    if resp.status_code == 429:
+        raise RuntimeError("Quota Gemini dépassé (limite gratuite atteinte).")
+    if resp.status_code != 200:
+        raise RuntimeError(
+            f"Gemini HTTP {resp.status_code} : {resp.text[:200]}"
+        )
+
+    try:
+        data = resp.json()
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Réponse Gemini invalide : {exc}") from exc
+
+    candidates = data.get('candidates', [])
+    if not candidates:
+        raise RuntimeError(f"Aucune réponse du modèle : {data}")
+
+    parts = candidates[0].get('content', {}).get('parts', [])
+    text_parts = [p.get('text', '') for p in parts if p.get('text')]
+    if not text_parts:
+        raise RuntimeError(f"Réponse vide du modèle : {candidates[0]}")
+
+    return ''.join(text_parts).strip()
 
 
+# ============================================================
+# Analyse de prévisions (interface publique inchangée)
+# ============================================================
 def analyser_previsions(
     district: str,
     algorithme: str,
@@ -92,36 +152,22 @@ def analyser_previsions(
     historique_recent: List[Dict[str, Any]],
     metriques: Optional[Dict[str, float]] = None,
 ) -> Dict[str, Any]:
-    """
-    Génère une analyse IA des prévisions.
-
-    Args:
-        district: nom du district
-        algorithme: 'Random Forest' ou 'XGBoost'
-        previsions: [{'horizon': 1, 'date': 'YYYY-MM', 'incidence': X, 'cas': N, 'niveau': 'orange'}, ...]
-        historique_recent: 12 derniers mois observés
-        metriques: {'rmse': X, 'mae': Y, 'r2': Z}
-
-    Returns:
-        {'success': bool, 'analyse': str, 'erreur': str | None}
-    """
-    client = _init_gemini()
-    if client is None:
-        return _analyse_locale_fallback(district, algorithme, previsions, historique_recent, metriques)
-
+    """Génère une analyse IA des prévisions (avec fallback local si Gemini indispo)."""
     prompt = _construire_prompt(district, algorithme, previsions, historique_recent, metriques)
 
     try:
-        response = client.generate_content(prompt)
+        text = call_gemini_rest(user_message=prompt, timeout=30)
         return {
             'success': True,
-            'analyse': response.text.strip(),
+            'analyse': text,
             'source': 'gemini',
             'erreur': None,
         }
-    except Exception as exc:
-        logger.error(f"Erreur Gemini : {exc}")
-        return _analyse_locale_fallback(district, algorithme, previsions, historique_recent, metriques)
+    except RuntimeError as exc:
+        logger.warning(f"Gemini indisponible : {exc}. Bascule sur fallback local.")
+        return _analyse_locale_fallback(
+            district, algorithme, previsions, historique_recent, metriques
+        )
 
 
 def _construire_prompt(
@@ -131,7 +177,7 @@ def _construire_prompt(
     historique_recent: List[Dict[str, Any]],
     metriques: Optional[Dict[str, float]],
 ) -> str:
-    """Construit le prompt pour Gemini."""
+    """Construit le prompt à envoyer à Gemini."""
     prev_txt = "\n".join([
         f"  - Horizon {p['horizon']} mois ({p.get('date', '?')}): "
         f"incidence prédite = {p['incidence']:.2f}/1000 hab., "
@@ -150,10 +196,12 @@ def _construire_prompt(
 
     metr_txt = ""
     if metriques:
-        metr_txt = (f"Performance du modèle {algorithme} (validation walk-forward) : "
-                    f"RMSE = {metriques.get('rmse', 0):.2f}, "
-                    f"MAE = {metriques.get('mae', 0):.2f}, "
-                    f"R² = {metriques.get('r2', 0):.3f}.")
+        metr_txt = (
+            f"Performance du modèle {algorithme} (validation walk-forward) : "
+            f"RMSE = {metriques.get('rmse', 0):.2f}, "
+            f"MAE = {metriques.get('mae', 0):.2f}, "
+            f"R² = {metriques.get('r2', 0):.3f}."
+        )
 
     return f"""Tu es un expert en épidémiologie du paludisme dans la région de l'Extrême-Nord du Cameroun.
 Analyse les prévisions d'incidence palustre suivantes pour le {district}.
@@ -187,7 +235,7 @@ def _analyse_locale_fallback(
     historique_recent: List[Dict[str, Any]],
     metriques: Optional[Dict[str, float]],
 ) -> Dict[str, Any]:
-    """Analyse par règles si l'API IA est indisponible (mode dégradé)."""
+    """Analyse par règles si Gemini indisponible (mode dégradé)."""
     niveaux = [p.get('niveau', 'vert') for p in previsions]
     nb_rouge = sum(1 for n in niveaux if n == 'rouge')
     nb_orange = sum(1 for n in niveaux if n == 'orange')
@@ -218,7 +266,8 @@ def _analyse_locale_fallback(
 
     metr_str = ""
     if metriques:
-        metr_str = f" Les performances du modèle {algorithme} (RMSE = {metriques.get('rmse', 0):.2f}) confirment la fiabilité de la prévision."
+        metr_str = (f" Les performances du modèle {algorithme} "
+                    f"(RMSE = {metriques.get('rmse', 0):.2f}) confirment la fiabilité de la prévision.")
 
     analyse = (
         f"### Analyse du {district}\n\n"
@@ -227,7 +276,7 @@ def _analyse_locale_fallback(
         f"**2. Tendance** : L'évolution récente de l'incidence est **{tendance}** "
         f"sur les six derniers mois observés.{metr_str}\n\n"
         f"**3. Recommandations** : {reco}\n\n"
-        f"*(Analyse générée en mode dégradé — API Gemini non disponible)*"
+        f"*(Analyse générée en mode dégradé — service IA non disponible)*"
     )
 
     return {
