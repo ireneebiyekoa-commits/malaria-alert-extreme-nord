@@ -96,12 +96,13 @@ def api_prevision(request):
         for h, p in preds.items():
             seuil = seuils.get(p['mois_cible'])
             niveau = 'vert'
-            p75 = seuil.p75 if seuil else 0
-            p90 = seuil.p90 if seuil else 0
+            s_alerte = seuil.seuil_alerte if seuil else 0
+            s_epidemio = seuil.seuil_epidemio if seuil else 0
+            moyenne_hist = seuil.moyenne if seuil else 0
             if seuil:
-                if p['incidence'] >= seuil.p90:
+                if p['incidence'] >= seuil.seuil_epidemio:
                     niveau = 'rouge'
-                elif p['incidence'] >= seuil.p75:
+                elif p['incidence'] >= seuil.seuil_alerte:
                     niveau = 'orange'
             cas = (p['incidence'] * district.population) / 1000
             result.append({
@@ -111,8 +112,9 @@ def api_prevision(request):
                 'incidence': round(p['incidence'], 3),
                 'cas': round(cas, 0),
                 'niveau': niveau,
-                'p75': round(p75, 2),
-                'p90': round(p90, 2),
+                'seuil_alerte': round(s_alerte, 2),
+                'seuil_epidemio': round(s_epidemio, 2),
+                'moyenne_hist': round(moyenne_hist, 2),
             })
         return result
 
@@ -202,13 +204,18 @@ def api_analyse_ia(request):
 
 
 @login_required
-@admin_required
 @require_POST
 def api_generer_rapport(request):
-    """Génère et télécharge un rapport Word des prévisions (admin only)."""
+    """
+    Génère et télécharge un rapport Word des prévisions.
+
+    Accessible aux administrateurs ET aux chefs de district, mais :
+    - L'administrateur reçoit un rapport pour le district demandé (n'importe lequel).
+    - Le chef de district ne peut générer un rapport QUE pour son propre district.
+    """
     payload = json.loads(request.body or '{}')
 
-    district = payload.get('district', '—')
+    district_nom = payload.get('district', '—')
     algorithme = payload.get('algorithme', 'XGBoost')
     horizon = int(payload.get('horizon', 3))
     previsions = payload.get('previsions', [])
@@ -216,11 +223,20 @@ def api_generer_rapport(request):
     metriques = payload.get('metriques', {})
     analyse_ia = payload.get('analyse_ia', '')
 
+    # ----- Contrôle d'accès : un chef ne peut pas demander un autre district -----
+    user = request.user
+    if user.is_chef_district and user.district:
+        if district_nom != user.district.nom:
+            return JsonResponse(
+                {'error': "Vous n'êtes autorisé à générer le rapport que pour votre propre district."},
+                status=403
+            )
+
     if not previsions:
         return JsonResponse({'error': 'Aucune prévision fournie'}, status=400)
 
     buf = generer_rapport_previsions(
-        district=district,
+        district=district_nom,
         algorithme=algorithme,
         horizon=horizon,
         previsions=previsions,
@@ -230,7 +246,7 @@ def api_generer_rapport(request):
         auteur=request.user.get_full_name() or request.user.username,
     )
 
-    filename = f"rapport_prevision_{district.replace(' ', '_')}_{date.today().isoformat()}.docx"
+    filename = f"rapport_prevision_{district_nom.replace(' ', '_')}_{date.today().isoformat()}.docx"
     response = HttpResponse(
         buf.getvalue(),
         content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -300,13 +316,13 @@ def api_export_excel_global(request):
                 continue
             for h, p in preds.items():
                 seuil = seuils_map.get((district.id, p['mois_cible']))
-                p75 = seuil.p75 if seuil else 0
-                p90 = seuil.p90 if seuil else 0
+                s_alerte = seuil.seuil_alerte if seuil else 0
+                s_epidemio = seuil.seuil_epidemio if seuil else 0
                 niveau = 'vert'
                 if seuil:
-                    if p['incidence'] >= seuil.p90:
+                    if p['incidence'] >= seuil.seuil_epidemio:
                         niveau = 'rouge'
-                    elif p['incidence'] >= seuil.p75:
+                    elif p['incidence'] >= seuil.seuil_alerte:
                         niveau = 'orange'
                 cas = (p['incidence'] * district.population) / 1000
                 all_results.append({
@@ -318,8 +334,8 @@ def api_export_excel_global(request):
                     'mois_label': format_mois_annee(p['date_cible']),
                     'incidence': round(p['incidence'], 3),
                     'cas': round(cas, 0),
-                    'p75': round(p75, 2),
-                    'p90': round(p90, 2),
+                    'seuil_alerte': round(s_alerte, 2),
+                    'seuil_epidemio': round(s_epidemio, 2),
                     'niveau': niveau,
                     'population': district.population,
                 })
@@ -425,7 +441,8 @@ def api_export_excel_global(request):
         _apply_header(ws, [
             'District', 'Horizon', 'Date cible',
             'Incidence prédite (/1000)', 'Cas attendus',
-            'Seuil P75', 'Seuil P90', "Niveau d'alerte", 'Population'
+            "Seuil d'alerte (M+σ)", 'Seuil épidémio (M+2σ)',
+            "Niveau d'alerte", 'Population'
         ])
         algo_results = [r for r in all_results if r['algo'] == algo]
         for idx, r in enumerate(algo_results, 2):
@@ -434,8 +451,8 @@ def api_export_excel_global(request):
             ws.cell(row=idx, column=3, value=r['mois_label'])
             ws.cell(row=idx, column=4, value=r['incidence'])
             ws.cell(row=idx, column=5, value=int(r['cas']))
-            ws.cell(row=idx, column=6, value=r['p75'])
-            ws.cell(row=idx, column=7, value=r['p90'])
+            ws.cell(row=idx, column=6, value=r['seuil_alerte'])
+            ws.cell(row=idx, column=7, value=r['seuil_epidemio'])
             c_niv = ws.cell(row=idx, column=8, value=r['niveau'].upper())
             c_niv.fill = alert_fill.get(r['niveau'], alert_fill['vert'])
             c_niv.alignment = Alignment(horizontal='center')
@@ -555,7 +572,8 @@ def api_export_excel(request):
     header_font = Font(bold=True, color="FFFFFF")
 
     headers = ["Horizon (mois)", "Date cible", "Incidence prédite (/1000)",
-               "Cas attendus", "Seuil P75", "Seuil P90", "Niveau d'alerte"]
+               "Cas attendus", "Seuil d'alerte (M+σ)", "Seuil épidémio (M+2σ)",
+               "Niveau d'alerte"]
     for col, h in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=h)
         cell.fill = header_fill
@@ -567,8 +585,8 @@ def api_export_excel(request):
         ws.cell(row=row_idx, column=2, value=p.get('mois_label', p.get('date')))
         ws.cell(row=row_idx, column=3, value=p['incidence'])
         ws.cell(row=row_idx, column=4, value=p['cas'])
-        ws.cell(row=row_idx, column=5, value=p['p75'])
-        ws.cell(row=row_idx, column=6, value=p['p90'])
+        ws.cell(row=row_idx, column=5, value=p.get('seuil_alerte', 0))
+        ws.cell(row=row_idx, column=6, value=p.get('seuil_epidemio', 0))
         ws.cell(row=row_idx, column=7, value=p['niveau'].upper())
 
     for col_letter in 'ABCDEFG':

@@ -207,10 +207,14 @@ def _construire_prompt(
 Analyse les prévisions d'incidence palustre suivantes pour le {district}.
 
 Contexte : Le système d'alerte précoce s'appuie sur le modèle {algorithme} validé sur la période 2017-2025.
-Les seuils d'alerte sont définis selon les recommandations de l'OMS :
-- VERT (Normal) : incidence < percentile 75
-- ORANGE (Élevé) : entre P75 et P90
-- ROUGE (Critique) : incidence >= P90
+Les seuils d'alerte sont définis selon la **méthode des écarts-types** (recommandation OMS), calculés par district et par mois calendaire à partir de l'historique :
+- **Seuil d'alerte** = Moyenne historique + 1 × Écart-type
+- **Seuil épidémiologique** = Moyenne historique + 2 × Écarts-types
+
+Classification des niveaux :
+- VERT (Normal)    : incidence prédite < seuil d'alerte
+- ORANGE (Élevé)   : seuil d'alerte ≤ incidence prédite < seuil épidémiologique
+- ROUGE (Critique) : incidence prédite ≥ seuil épidémiologique (épidémie probable)
 
 Prévisions générées :
 {prev_txt}
@@ -221,9 +225,9 @@ Prévisions générées :
 
 Fournis une analyse structurée en français en 3 paragraphes clairs et concis (200 mots maximum au total) :
 
-1. **Interprétation des prévisions** : que signifient ces niveaux pour le district ?
-2. **Tendance** : la situation s'aggrave-t-elle, s'améliore-t-elle, ou reste-t-elle stable ?
-3. **Recommandations opérationnelles** : actions concrètes que peut entreprendre le GTR Paludisme de l'Extrême-Nord (mobilisation des CPS, distribution de moustiquaires, renforcement diagnostique, etc.).
+1. **Interprétation des prévisions** : que signifient ces niveaux pour le district ? Réfère-toi explicitement aux seuils d'alerte et épidémiologique.
+2. **Tendance** : la situation s'aggrave-t-elle, s'améliore-t-elle, ou reste-t-elle stable par rapport aux 6 derniers mois ?
+3. **Recommandations opérationnelles** : actions concrètes que peut entreprendre le GTR Paludisme de l'Extrême-Nord (mobilisation des CPS, distribution de moustiquaires, renforcement diagnostique, surveillance entomologique, etc.).
 
 Sois précis, professionnel et factuel. Évite les généralités. Adresse-toi à un décideur de santé publique."""
 

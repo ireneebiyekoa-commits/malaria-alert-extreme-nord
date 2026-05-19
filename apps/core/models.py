@@ -155,19 +155,41 @@ class Prevision(models.Model):
 
 
 # ============================================================
-# SEUIL D'ALERTE (P25, P75, P90 par district x mois calendaire)
+# SEUIL D'ALERTE (moyenne + écart-type, méthode OMS)
 # ============================================================
 class SeuilAlerte(models.Model):
-    """Seuils d'alerte épidémique (P75 / P90) par district et mois calendaire."""
+    """
+    Seuils d'alerte épidémique par district x mois calendaire.
+
+    Méthode des écarts-types (recommandée par l'OMS pour la surveillance
+    épidémiologique du paludisme) :
+       - Seuil d'alerte         = Moyenne + 1 * Écart-type
+       - Seuil épidémiologique  = Moyenne + 2 * Écart-type
+
+    Interprétation des niveaux :
+       - VERT    : incidence < seuil_alerte         (situation normale)
+       - ORANGE  : seuil_alerte ≤ incidence < seuil_epidemio  (alerte)
+       - ROUGE   : incidence ≥ seuil_epidemio       (épidémie probable)
+    """
 
     district = models.ForeignKey(
         District, on_delete=models.CASCADE, related_name='seuils',
         verbose_name='District',
     )
     mois_calendaire = models.PositiveSmallIntegerField(verbose_name='Mois calendaire (1-12)')
-    p25 = models.FloatField(verbose_name='Percentile 25')
-    p75 = models.FloatField(verbose_name='Percentile 75 (seuil orange)')
-    p90 = models.FloatField(verbose_name='Percentile 90 (seuil rouge)')
+
+    # Statistiques de base (référence historique)
+    moyenne = models.FloatField(default=0, verbose_name='Moyenne historique')
+    ecart_type = models.FloatField(default=0, verbose_name='Écart-type historique')
+
+    # Seuils dérivés (= valeurs stockées pour accès rapide)
+    seuil_alerte = models.FloatField(default=0, verbose_name="Seuil d'alerte (M + σ)")
+    seuil_epidemio = models.FloatField(default=0, verbose_name='Seuil épidémiologique (M + 2σ)')
+
+    # Champs historiques (DEPRECATED, gardés pour rétro-compat des migrations) :
+    p25 = models.FloatField(default=0, verbose_name='[deprecated] Percentile 25')
+    p75 = models.FloatField(default=0, verbose_name='[deprecated] Percentile 75')
+    p90 = models.FloatField(default=0, verbose_name='[deprecated] Percentile 90')
 
     class Meta:
         verbose_name = "Seuil d'alerte"
@@ -176,7 +198,8 @@ class SeuilAlerte(models.Model):
         ordering = ['district', 'mois_calendaire']
 
     def __str__(self):
-        return f"{self.district.nom_court} — mois {self.mois_calendaire} : P75={self.p75:.2f} / P90={self.p90:.2f}"
+        return (f"{self.district.nom_court} — mois {self.mois_calendaire} : "
+                f"alerte={self.seuil_alerte:.2f} / épidémio={self.seuil_epidemio:.2f}")
 
 
 # ============================================================

@@ -78,7 +78,7 @@
                 currentData = data;
                 renderMap(data);
                 renderPanel(data);
-                renderResume(data.resume);
+                renderResume(data);
                 $('#alert-info').textContent = `Algorithme : ${data.algorithme} · Horizon : ${data.horizon} mois`;
 
                 // Mettre à jour le lien export PDF
@@ -118,14 +118,15 @@
                 // Popup détaillé au survol
                 if (a) {
                     const popupHtml = `
-                        <div style="min-width:200px;">
+                        <div style="min-width:220px;">
                             <strong style="color:#0e476e;font-size:13px;">${nom}</strong>
                             <hr style="margin:4px 0;border:0;border-top:1px solid #dee2e6;">
                             <span style="color:${COLOR[a.niveau]}; font-weight:700;">${LABEL[a.niveau]}</span><br>
                             Incidence prédite : <b>${a.incidence_predite.toFixed(2)}</b> /1000<br>
                             Cas attendus : <b>${Math.round(a.cas_predits).toLocaleString('fr-FR')}</b><br>
                             <hr style="margin:4px 0;border:0;border-top:1px solid #dee2e6;">
-                            Seuils OMS — P75: ${a.p75.toFixed(2)} · P90: ${a.p90.toFixed(2)}<br>
+                            Seuil d'alerte (M+σ) : ${(a.seuil_alerte||0).toFixed(2)}<br>
+                            Seuil épidémio. (M+2σ) : ${(a.seuil_epidemio||0).toFixed(2)}<br>
                             <span style="font-size:11px;color:#5a6878;">Date cible : ${a.mois_label}</span>
                         </div>
                     `;
@@ -193,11 +194,42 @@
         });
     }
 
-    function renderResume(resume) {
-        $('#resume-rouge').textContent = resume.rouge;
-        $('#resume-orange').textContent = resume.orange;
-        $('#resume-vert').textContent = resume.vert;
-        $('#resume-total').textContent = resume.total;
+    function renderResume(data) {
+        const resume = data.resume;
+        // Vue admin : 4 KPI globaux
+        const elR = $('#resume-rouge');
+        const elO = $('#resume-orange');
+        const elV = $('#resume-vert');
+        const elT = $('#resume-total');
+        if (elR) elR.textContent = resume.rouge;
+        if (elO) elO.textContent = resume.orange;
+        if (elV) elV.textContent = resume.vert;
+        if (elT) elT.textContent = resume.total;
+
+        // Vue chef de district : statut de SON unique district (le seul de la liste)
+        const elMon = $('#resume-mon-district');
+        const elMonHelp = $('#resume-mon-district-help');
+        const cardMon = $('#kpi-statut-mon-district');
+        if (elMon && data.alertes.length > 0) {
+            const a = data.alertes[0];
+            const labels = {
+                vert: '🟢 NORMAL',
+                orange: '🟠 ÉLEVÉ',
+                rouge: '🔴 CRITIQUE',
+            };
+            elMon.textContent = labels[a.niveau] || a.niveau.toUpperCase();
+            elMon.style.color = COLOR[a.niveau];
+            elMonHelp.innerHTML = `
+                District de <strong>${a.district_court}</strong> — ${a.mois_label}<br>
+                Incidence prédite : <strong>${a.incidence_predite.toFixed(2)}</strong>/1000
+                (${Math.round(a.cas_predits).toLocaleString('fr-FR')} cas attendus)<br>
+                Seuils — alerte : ${(a.seuil_alerte||0).toFixed(2)} · épidémio : ${(a.seuil_epidemio||0).toFixed(2)}
+            `;
+            // Couleur de la carte
+            if (cardMon) {
+                cardMon.className = `kpi-card kpi-${a.niveau}`;
+            }
+        }
     }
 
     // ============================================================

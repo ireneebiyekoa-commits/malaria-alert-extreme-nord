@@ -112,8 +112,8 @@
                 <td>${p.mois_label}</td>
                 <td>${p.incidence.toFixed(2)}</td>
                 <td>${Math.round(p.cas).toLocaleString('fr-FR')}</td>
-                <td>${p.p75.toFixed(2)}</td>
-                <td>${p.p90.toFixed(2)}</td>
+                <td>${(p.seuil_alerte || 0).toFixed(2)}</td>
+                <td>${(p.seuil_epidemio || 0).toFixed(2)}</td>
                 <td>${NIVEAU_BADGE[p.niveau] || p.niveau}</td>
             `;
             tbody.appendChild(tr);
@@ -135,7 +135,6 @@
         if (prevList) prevList.forEach(p => labelsAll.push(p.mois_label));
         else if (prevListXGB) prevListXGB.forEach(p => labelsAll.push(p.mois_label));
 
-        // Connecter la dernière obs à la première prévision
         const connectorLast = histInc.length ? histInc[histInc.length - 1] : null;
 
         const datasets = [
@@ -147,14 +146,14 @@
                 borderWidth: 2.5,
                 tension: 0.25,
                 pointRadius: 4,
+                order: 1,
             }
         ];
 
         const buildPredArray = (list) => {
             const arr = new Array(histInc.length - 1).fill(null);
-            arr.push(connectorLast);  // connecter visuellement
+            arr.push(connectorLast);
             list.forEach(p => arr.push(p.incidence));
-            // pad
             while (arr.length < labelsAll.length) arr.push(null);
             return arr;
         };
@@ -171,6 +170,7 @@
                 pointRadius: 6,
                 pointStyle: 'rectRot',
                 pointBackgroundColor: prevList.map(p => NIVEAU_COLOR[p.niveau] || '#888'),
+                order: 1,
             });
         } else {
             if (prevListRF) datasets.push({
@@ -181,6 +181,7 @@
                 borderDash: [6, 4],
                 tension: 0.25,
                 pointRadius: 6,
+                order: 1,
             });
             if (prevListXGB) datasets.push({
                 label: 'Prévision XGBoost',
@@ -190,6 +191,42 @@
                 borderDash: [3, 3],
                 tension: 0.25,
                 pointRadius: 6,
+                order: 1,
+            });
+        }
+
+        // ===== Lignes des seuils épidémiologiques =====
+        // Pour la lisibilité, on prend les seuils du PREMIER horizon prédit
+        // (les seuils varient selon le mois calendaire — on affiche celui de h=1
+        //  comme référence visuelle).
+        const referenceList = prevList || prevListXGB || prevListRF || [];
+        const seuilAlerteRef = referenceList[0] ? referenceList[0].seuil_alerte : null;
+        const seuilEpidemioRef = referenceList[0] ? referenceList[0].seuil_epidemio : null;
+
+        if (seuilAlerteRef !== null && seuilAlerteRef > 0) {
+            datasets.push({
+                label: `Seuil d'alerte (${seuilAlerteRef.toFixed(2)})`,
+                data: labelsAll.map(() => seuilAlerteRef),
+                borderColor: '#fd7e14',
+                borderWidth: 1.5,
+                borderDash: [4, 4],
+                pointRadius: 0,
+                fill: false,
+                tension: 0,
+                order: 2,
+            });
+        }
+        if (seuilEpidemioRef !== null && seuilEpidemioRef > 0) {
+            datasets.push({
+                label: `Seuil épidémiologique (${seuilEpidemioRef.toFixed(2)})`,
+                data: labelsAll.map(() => seuilEpidemioRef),
+                borderColor: '#c0392b',
+                borderWidth: 1.5,
+                borderDash: [8, 4],
+                pointRadius: 0,
+                fill: false,
+                tension: 0,
+                order: 2,
             });
         }
 

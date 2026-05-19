@@ -57,13 +57,28 @@ def index(request):
                             'incidence': round(ranked[0][1], 2)}
 
     # Districts en alerte rouge sur la dernière prévision
+    # (KPI affiché uniquement aux administrateurs : un chef de district ne voit
+    #  pas un compte global, mais le statut de son seul district — affiché ailleurs)
     prev_qs = filter_by_user_role(Prevision.objects.all(), user)
     nb_alertes_rouges = 0
+    statut_mon_district = None        # pour les chefs de district
     latest_prev_date = prev_qs.aggregate(m=Max('date_origine'))['m']
     if latest_prev_date:
-        nb_alertes_rouges = prev_qs.filter(
-            date_origine=latest_prev_date, niveau_alerte='rouge'
-        ).values('district').distinct().count()
+        if user.is_admin:
+            nb_alertes_rouges = prev_qs.filter(
+                date_origine=latest_prev_date, niveau_alerte='rouge'
+            ).values('district').distinct().count()
+        elif user.is_chef_district and user.district_id:
+            # Statut le plus sévère parmi les horizons pour SON district
+            niveaux = list(prev_qs.filter(
+                date_origine=latest_prev_date
+            ).values_list('niveau_alerte', flat=True))
+            if 'rouge' in niveaux:
+                statut_mon_district = 'rouge'
+            elif 'orange' in niveaux:
+                statut_mon_district = 'orange'
+            elif niveaux:
+                statut_mon_district = 'vert'
 
     # Taux de complétude des données
     nb_obs = obs_qs.count()
@@ -87,12 +102,14 @@ def index(request):
             'total_cas': total_cas_periode,
             'district_top': district_top,
             'nb_alertes_rouges': nb_alertes_rouges,
+            'statut_mon_district': statut_mon_district,
             'taux_completude': round(taux_completude, 1),
             'derniere_periode': format_mois_annee(derniere_date) if derniere_date else '—',
         },
         'districts': districts_visibles,
         'annees_dispo': annees_dispo,
         'annee_courante': annees_dispo[-1] if annees_dispo else date.today().year,
+        'is_admin': user.is_admin,
     }
     return render(request, 'dashboard/index.html', context)
 
@@ -242,9 +259,26 @@ def api_correlation_croisee(request):
 
 @login_required
 def api_heatmap_district_mois(request):
-    """Heatmap incidence district x mois calendaire (profils saisonniers)."""
+    """
+    Heatmap incidence district x mois calendaire (profils saisonniers).
+
+    Si le paramètre `district_id` est fourni, seul ce district est inclus
+    (utilisé quand le filtre district est actif côté UI).
+    """
     user = request.user
+    district_id = request.GET.get('district_id')
+
     obs_qs = filter_by_user_role(Observation.objects.all(), user).select_related('district')
+
+    # Filtre district demandé par l'utilisateur
+    if district_id:
+        try:
+            d_obj = District.objects.get(pk=district_id)
+            if not user.peut_voir_district(d_obj):
+                return JsonResponse({'error': 'accès refusé'}, status=403)
+            obs_qs = obs_qs.filter(district_id=district_id)
+        except District.DoesNotExist:
+            return JsonResponse({'error': 'district inexistant'}, status=404)
 
     grid = {}
     counts = {}
@@ -268,4 +302,5 @@ def api_heatmap_district_mois(request):
         'districts': [d.replace('District ', '') for d in districts],
         'mois': mois,
         'matrix': matrix,
+        'district_filter_id': district_id or None,
     })

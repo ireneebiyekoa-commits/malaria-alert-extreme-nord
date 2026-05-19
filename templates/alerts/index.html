@@ -43,22 +43,23 @@
         </div>
     </div>
 
-    <!-- Résumé global -->
+    <!-- Résumé (variable selon le rôle) -->
+    {% if is_admin %}
     <div class="kpi-grid">
         <div class="kpi-card kpi-rouge">
-            <div class="kpi-label">Districts en alerte rouge</div>
+            <div class="kpi-label">Districts en alerte critique</div>
             <div class="kpi-value" id="resume-rouge">—</div>
-            <div class="kpi-help">Incidence prédite ≥ P90</div>
+            <div class="kpi-help">Incidence prédite ≥ seuil épidémiologique (M + 2σ)</div>
         </div>
         <div class="kpi-card kpi-orange">
-            <div class="kpi-label">Districts en alerte orange</div>
+            <div class="kpi-label">Districts en alerte élevée</div>
             <div class="kpi-value" id="resume-orange">—</div>
-            <div class="kpi-help">P75 ≤ Incidence prédite &lt; P90</div>
+            <div class="kpi-help">Incidence prédite ≥ seuil d'alerte (M + σ)</div>
         </div>
         <div class="kpi-card kpi-vert">
             <div class="kpi-label">Districts en niveau normal</div>
             <div class="kpi-value" id="resume-vert">—</div>
-            <div class="kpi-help">Incidence prédite &lt; P75</div>
+            <div class="kpi-help">Incidence prédite &lt; seuil d'alerte</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">Total surveillé</div>
@@ -66,6 +67,16 @@
             <div class="kpi-help">Districts couverts par la prévision</div>
         </div>
     </div>
+    {% else %}
+    {# Chef de district : voit seulement le statut de son district #}
+    <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); max-width: 700px; margin: 0 auto var(--space-5);">
+        <div class="kpi-card" id="kpi-statut-mon-district">
+            <div class="kpi-label">Statut de mon district</div>
+            <div class="kpi-value" id="resume-mon-district" style="font-size: 1.5rem;">—</div>
+            <div class="kpi-help" id="resume-mon-district-help">Calcul en cours…</div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Carte + panneau latéral -->
     <div class="dashboard-grid" style="grid-template-columns: 2fr 1fr;">

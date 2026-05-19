@@ -269,13 +269,13 @@ def recalculer_previsions():
 
                 for h, p in preds.items():
                     seuil = seuils_map.get((district.id, p['mois_cible']))
-                    p75 = seuil.p75 if seuil else 0
-                    p90 = seuil.p90 if seuil else 0
+                    s_alerte = seuil.seuil_alerte if seuil else 0
+                    s_epidemio = seuil.seuil_epidemio if seuil else 0
                     niveau = 'vert'
                     if seuil:
-                        if p['incidence'] >= seuil.p90:
+                        if p['incidence'] >= seuil.seuil_epidemio:
                             niveau = 'rouge'
-                        elif p['incidence'] >= seuil.p75:
+                        elif p['incidence'] >= seuil.seuil_alerte:
                             niveau = 'orange'
                     cas = (p['incidence'] * district.population) / 1000
 
@@ -289,8 +289,9 @@ def recalculer_previsions():
                             'incidence_predite': p['incidence'],
                             'cas_predits': cas,
                             'niveau_alerte': niveau,
-                            'seuil_p75': p75,
-                            'seuil_p90': p90,
+                            # Conservé pour compat schéma (les valeurs sont équivalentes)
+                            'seuil_p75': s_alerte,
+                            'seuil_p90': s_epidemio,
                         }
                     )
                     nb += 1

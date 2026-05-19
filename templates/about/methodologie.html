@@ -411,35 +411,72 @@
          ============================================================ -->
     <div class="card mb-5">
         <div class="card-header">
-            <h3 class="card-title">8. Seuils d'alerte épidémique (OMS, 2014)</h3>
+            <h3 class="card-title">8. Seuils d'alerte épidémique (méthode des écarts-types — OMS)</h3>
         </div>
         <div class="card-body">
             <p>
-                Conformément aux recommandations de l'<strong>Organisation Mondiale de la
-                Santé</strong> publiées dans <em>« Disease Surveillance for Malaria Control »</em>
-                (OMS, 2012-2014), les seuils d'alerte sont définis par les percentiles 75 et 90
-                de la distribution historique d'incidence, calculés <strong>par district</strong>
-                et <strong>par mois calendaire</strong> :
+                Conformément aux recommandations de l'<strong>Organisation Mondiale de la Santé</strong>
+                pour la surveillance épidémiologique du paludisme, les seuils sont déterminés par la
+                <strong>méthode des écarts-types</strong>, calculés par <strong>district</strong>
+                et par <strong>mois calendaire</strong> à partir des 8 années d'historique (2017-2025).
+            </p>
+
+            <h4 class="mt-4">8.1 — Seuil d'alerte</h4>
+            <p>
+                Le <strong>seuil d'alerte</strong> est calculé pour détecter précocement les
+                augmentations inhabituelles du nombre de cas. Plus bas que le seuil épidémiologique,
+                il déclenche les <em>mesures préventives</em> avant que la situation ne devienne critique.
+            </p>
+            <div style="text-align:center; padding: var(--space-4); background: #fff8e6; border-radius: var(--radius-md); margin: var(--space-3) 0; font-family: var(--font-serif); font-size: 1.15rem; border-left: 4px solid var(--alert-orange);">
+                <strong>Seuil d'alerte = Moyenne + 1 × Écart-type</strong>
+            </div>
+
+            <h4 class="mt-4">8.2 — Seuil épidémiologique</h4>
+            <p>
+                Le <strong>seuil épidémiologique</strong> permet de déclarer une situation épidémique
+                avérée. Cette formule capture les variations normales tout en identifiant les
+                augmentations significatives qui peuvent indiquer une <em>épidémie déclarée</em>.
+            </p>
+            <div style="text-align:center; padding: var(--space-4); background: #fde2e2; border-radius: var(--radius-md); margin: var(--space-3) 0; font-family: var(--font-serif); font-size: 1.15rem; border-left: 4px solid var(--alert-rouge);">
+                <strong>Seuil épidémiologique = Moyenne + 2 × Écart-type</strong>
+            </div>
+
+            <h4 class="mt-4">8.3 — Classification des niveaux</h4>
+            <ul>
+                <li><span class="badge badge-vert">VERT — Normal</span>
+                    &nbsp;Incidence prédite &lt; Seuil d'alerte (zone de variation habituelle)</li>
+                <li><span class="badge badge-orange">ORANGE — Élevé</span>
+                    &nbsp;Seuil d'alerte ≤ Incidence prédite &lt; Seuil épidémiologique
+                    (situation à surveiller)</li>
+                <li><span class="badge badge-rouge">ROUGE — Critique</span>
+                    &nbsp;Incidence prédite ≥ Seuil épidémiologique (épidémie probable)</li>
+            </ul>
+
+            <h4 class="mt-4">8.4 — Justification statistique</h4>
+            <p>
+                Sous l'hypothèse de normalité approchée :
             </p>
             <ul>
-                <li><span class="badge badge-vert">VERT — Normal</span> &nbsp;Incidence prédite < P75</li>
-                <li><span class="badge badge-orange">ORANGE — Élevé</span> &nbsp;P75 ≤ Incidence prédite < P90</li>
-                <li><span class="badge badge-rouge">ROUGE — Critique</span> &nbsp;Incidence prédite ≥ P90</li>
+                <li>≈ <strong>16 %</strong> des observations historiques dépassent le seuil d'alerte
+                    (μ + σ) ;</li>
+                <li>≈ <strong>2,5 %</strong> dépassent le seuil épidémiologique (μ + 2σ), ce qui
+                    correspond à un événement statistiquement <em>rare et préoccupant</em>.</li>
             </ul>
             <p>
-                Cette approche, dite « méthode des percentiles », a deux avantages :
+                Cette approche a deux avantages majeurs :
             </p>
             <ol>
-                <li>Elle respecte la <strong>saisonnalité locale</strong> : un seuil rouge en
-                    saison sèche peut être plus bas qu'en saison des pluies, ce qui évite
-                    les fausses alertes saisonnières.</li>
-                <li>Elle s'adapte à chaque district : les zones traditionnellement plus
-                    affectées ont des seuils plus élevés, ce qui empêche de saturer le
-                    système d'alertes inutiles.</li>
+                <li>Elle respecte la <strong>saisonnalité locale</strong> : un seuil rouge en saison
+                    sèche est plus bas qu'en saison des pluies, ce qui évite les fausses alertes
+                    saisonnières.</li>
+                <li>Elle <strong>s'adapte à chaque district</strong> : les zones traditionnellement
+                    plus affectées ont des seuils plus élevés, ce qui empêche de saturer le système
+                    d'alertes inutiles.</li>
             </ol>
             <p>
-                Au total, <strong>384 seuils</strong> (32 districts × 12 mois) sont calculés
-                et stockés en base. Ils sont recalculés à chaque import de nouvelles données.
+                Au total, <strong>384 paires de seuils</strong> (32 districts × 12 mois) sont
+                calculées et stockées en base. Elles sont automatiquement recalculées à chaque
+                import de nouvelles données mensuelles.
             </p>
         </div>
     </div>

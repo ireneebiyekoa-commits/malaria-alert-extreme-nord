@@ -37,6 +37,7 @@ def index(request):
         'districts': districts,
         'algorithmes': [('XGB', 'XGBoost'), ('RF', 'Random Forest')],
         'horizons': [1, 2, 3],
+        'is_admin': user.is_admin,
     }
     return render(request, 'alerts/index.html', context)
 
@@ -96,13 +97,14 @@ def api_alertes(request):
             continue
 
         seuil = seuils_map.get((district.id, p['mois_cible']))
-        p75 = seuil.p75 if seuil else 0
-        p90 = seuil.p90 if seuil else 0
+        s_alerte = seuil.seuil_alerte if seuil else 0
+        s_epidemio = seuil.seuil_epidemio if seuil else 0
+        moyenne = seuil.moyenne if seuil else 0
         niveau = 'vert'
         if seuil:
-            if p['incidence'] >= seuil.p90:
+            if p['incidence'] >= seuil.seuil_epidemio:
                 niveau = 'rouge'
-            elif p['incidence'] >= seuil.p75:
+            elif p['incidence'] >= seuil.seuil_alerte:
                 niveau = 'orange'
 
         cas_predits = (p['incidence'] * district.population) / 1000
@@ -118,8 +120,9 @@ def api_alertes(request):
             'mois_label': format_mois_annee(p['date_cible']),
             'incidence_predite': round(p['incidence'], 3),
             'cas_predits': round(cas_predits, 0),
-            'p75': round(p75, 2),
-            'p90': round(p90, 2),
+            'seuil_alerte': round(s_alerte, 2),
+            'seuil_epidemio': round(s_epidemio, 2),
+            'moyenne_hist': round(moyenne, 2),
             'niveau': niveau,
         })
 
@@ -209,15 +212,15 @@ def export_pdf(request):
 
     # Tableau détaillé
     table_data = [['District', 'Date cible', 'Incidence prédite', 'Cas attendus',
-                   'Seuil P75', 'Seuil P90', 'Niveau']]
+                   'Seuil alerte', 'Seuil épidémio', 'Niveau']]
     for a in alertes:
         table_data.append([
             a['district_court'],
             a['mois_label'],
             f"{a['incidence_predite']:.2f}",
             f"{int(a['cas_predits']):,}".replace(',', ' '),
-            f"{a['p75']:.2f}",
-            f"{a['p90']:.2f}",
+            f"{a['seuil_alerte']:.2f}",
+            f"{a['seuil_epidemio']:.2f}",
             a['niveau'].upper(),
         ])
 

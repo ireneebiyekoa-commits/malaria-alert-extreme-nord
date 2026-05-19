@@ -1,14 +1,15 @@
 /* ============================================================
-   Dashboard — Carte choroplèthe, séries temporelles, CCF, heatmap
+   Dashboard — Carte, séries temporelles, CCF, heatmap connectée
    ============================================================ */
 
 (function () {
     'use strict';
 
     const $ = (sel) => document.querySelector(sel);
-    const filterAnnee = $('#filter-annee');
+    const filterAnneeCarte = $('#filter-annee-carte');
     const filterDistrict = $('#filter-district');
     const filterVariable = $('#filter-variable');
+    const filterHeatmapScope = $('#filter-heatmap-scope');   // peut être null (chef de district)
 
     let mapIncidence = null;
     let geojsonLayer = null;
@@ -20,7 +21,7 @@
     // ============================================================
     function initMap() {
         mapIncidence = L.map('map-incidence', {
-            center: [10.7, 14.4],   // Centre Extrême-Nord
+            center: [10.7, 14.4],
             zoom: 8,
             scrollWheelZoom: false,
         });
@@ -30,7 +31,6 @@
             maxZoom: 18,
         }).addTo(mapIncidence);
 
-        // Légende
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = function () {
             const div = L.DomUtil.create('div', 'legend-card');
@@ -46,14 +46,13 @@
         };
         legend.addTo(mapIncidence);
 
-        // Charger le GeoJSON statique
         fetch('/static/geojson/extreme_nord_districts.geojson')
             .then(r => r.json())
             .then(geojson => {
                 window.__GEOJSON = geojson;
                 loadCarte();
             })
-            .catch(err => console.error('Erreur chargement GeoJSON :', err));
+            .catch(err => console.error('Erreur GeoJSON :', err));
     }
 
     function colorFromIncidence(inc) {
@@ -65,13 +64,10 @@
     }
 
     function loadCarte() {
-        const annee = filterAnnee.value;
+        const annee = filterAnneeCarte.value;
         fetch(`/dashboard/api/carte-incidence/?annee=${annee}`)
             .then(r => r.json())
-            .then(data => {
-                renderChoroplethe(data);
-                $('#carte-annee').textContent = annee;
-            })
+            .then(data => renderChoroplethe(data))
             .catch(err => console.error(err));
     }
 
@@ -79,9 +75,7 @@
         if (!window.__GEOJSON || !mapIncidence) return;
 
         const incMap = {};
-        data.districts.forEach(d => {
-            incMap[d.district] = d;
-        });
+        data.districts.forEach(d => { incMap[d.district] = d; });
 
         if (geojsonLayer) mapIncidence.removeLayer(geojsonLayer);
 
@@ -101,7 +95,6 @@
                 const nomCourt = nom.replace('District ', '');
                 const d = incMap[nom] || {};
 
-                // Popup détaillé au survol (et au clic)
                 const popupHtml = `
                     <div style="min-width:180px;">
                         <strong style="color:#0e476e;font-size:13px;">${nom}</strong><br>
@@ -114,7 +107,6 @@
                 `;
                 layer.bindPopup(popupHtml, { autoPan: false });
 
-                // Label permanent (nom court) au centre du polygone
                 layer.bindTooltip(nomCourt, {
                     permanent: true,
                     direction: 'center',
@@ -172,18 +164,14 @@
                         data: inc,
                         borderColor: '#0e476e',
                         backgroundColor: 'rgba(14, 71, 110, 0.1)',
-                        yAxisID: 'y1',
-                        tension: 0.25,
-                        borderWidth: 2,
+                        yAxisID: 'y1', tension: 0.25, borderWidth: 2,
                     },
                     {
                         label: 'Précipitations (mm)',
                         data: precip,
                         borderColor: '#1565a0',
                         backgroundColor: 'rgba(21, 101, 160, 0.05)',
-                        yAxisID: 'y2',
-                        tension: 0.25,
-                        borderWidth: 1.5,
+                        yAxisID: 'y2', tension: 0.25, borderWidth: 1.5,
                         borderDash: [5, 3],
                     },
                     {
@@ -191,11 +179,8 @@
                         data: temp,
                         borderColor: '#dc3545',
                         backgroundColor: 'transparent',
-                        yAxisID: 'y3',
-                        tension: 0.25,
-                        borderWidth: 1.5,
-                        borderDash: [2, 2],
-                        hidden: true,
+                        yAxisID: 'y3', tension: 0.25, borderWidth: 1.5,
+                        borderDash: [2, 2], hidden: true,
                     },
                 ]
             },
@@ -246,8 +231,7 @@
                     label: 'Corrélation',
                     data: data.ccf,
                     backgroundColor: colors,
-                    borderColor: colors,
-                    borderWidth: 1,
+                    borderColor: colors, borderWidth: 1,
                 }]
             },
             options: {
@@ -255,16 +239,10 @@
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    title: {
-                        display: true,
-                        text: `Lag optimal : ${data.optimal_lag > 0 ? '+' : ''}${data.optimal_lag} mois`,
-                    },
+                    title: { display: true, text: `Lag optimal : ${data.optimal_lag > 0 ? '+' : ''}${data.optimal_lag} mois` },
                 },
                 scales: {
-                    y: {
-                        title: { display: true, text: 'Coefficient de corrélation' },
-                        min: -1, max: 1,
-                    },
+                    y: { title: { display: true, text: 'Coefficient de corrélation' }, min: -1, max: 1 },
                     x: { title: { display: true, text: 'Lag (mois)' } },
                 }
             }
@@ -274,10 +252,21 @@
     }
 
     // ============================================================
-    // Heatmap (rendu HTML simple en table)
+    // Heatmap CONNECTÉE au filtre district
     // ============================================================
     function loadHeatmap() {
-        fetch('/dashboard/api/heatmap/')
+        // Pour un chef de district, on filtre toujours sur son district.
+        // Pour un admin, on respecte filter-heatmap-scope (par défaut : son district sélectionné).
+        let url = '/dashboard/api/heatmap/';
+        const scope = filterHeatmapScope ? filterHeatmapScope.value : 'district';
+        const districtId = filterDistrict.value;
+
+        if (scope === 'district' && districtId) {
+            url += `?district_id=${districtId}`;
+        }
+        // sinon : pas de paramètre, tous les districts visibles par l'utilisateur
+
+        fetch(url)
             .then(r => r.json())
             .then(data => renderHeatmap(data))
             .catch(err => console.error(err));
@@ -300,7 +289,7 @@
             return `rgb(${r},${g},${b})`;
         };
 
-        let html = '<table class="table table-compact" style="min-width: 800px;">';
+        let html = '<table class="table table-compact" style="min-width:600px;">';
         html += '<thead><tr><th>District</th>';
         monthLabels.forEach(m => html += `<th style="text-align:center;">${m}</th>`);
         html += '</tr></thead><tbody>';
@@ -315,10 +304,18 @@
         });
         html += '</tbody></table>';
         container.innerHTML = html;
+
+        // Info
+        const info = $('#heatmap-info');
+        if (info) {
+            info.textContent = data.district_filter_id
+                ? `Profil saisonnier du district sélectionné`
+                : `${data.districts.length} districts affichés`;
+        }
     }
 
     // ============================================================
-    // Init
+    // Init et listeners
     // ============================================================
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof L !== 'undefined') initMap();
@@ -326,8 +323,22 @@
         loadCCF();
         loadHeatmap();
 
-        filterAnnee.addEventListener('change', loadCarte);
-        filterDistrict.addEventListener('change', () => { loadSerie(); loadCCF(); });
+        // Carte : filtre année dédié
+        filterAnneeCarte.addEventListener('change', loadCarte);
+
+        // Filtre district : ré-applique sur Série, CCF, ET heatmap
+        filterDistrict.addEventListener('change', () => {
+            loadSerie();
+            loadCCF();
+            loadHeatmap();
+        });
+
+        // Variable climatique pour CCF
         filterVariable.addEventListener('change', loadCCF);
+
+        // Scope heatmap (admin uniquement)
+        if (filterHeatmapScope) {
+            filterHeatmapScope.addEventListener('change', loadHeatmap);
+        }
     });
 })();

@@ -24,8 +24,11 @@ echo "==> [5/6] Calcul des seuils + performances officielles..."
 python manage.py compute_seuils || echo "Seuils déjà calculés"
 python manage.py load_performances_officielles || echo "Performances déjà chargées"
 
-echo "==> [6/6] Création des comptes (admin + 32 chefs de district)..."
+echo "==> [6/7] Création des comptes (admin + 32 chefs de district)..."
 python manage.py seed_chefs_districts || echo "Comptes déjà créés"
+
+echo "==> [7/7] Génération des prévisions initiales (192 entrées)..."
+python manage.py generate_predictions || echo "Prévisions non générées (vérifier les modèles ML)"
 
 echo ""
 echo "============================================================"
