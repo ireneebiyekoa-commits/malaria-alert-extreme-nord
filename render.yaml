@@ -6,26 +6,37 @@ services:
   - type: web
     name: malaria-alert-extreme-nord
     runtime: python
-    region: frankfurt          # Europe (Cameroun-friendly)
+    region: frankfurt          # Europe (latence raisonnable depuis le Cameroun)
     plan: free
     pythonVersion: "3.12"
     buildCommand: "./build.sh"
-    startCommand: "gunicorn config.wsgi:application --workers 2 --timeout 120 --bind 0.0.0.0:$PORT"
+    # 1 seul worker : les modèles ML (RF + XGB) sont déjà chargés en RAM (~50 Mo)
+    # et seraient dupliqués par worker, ce qui dépasse la limite free 512 Mo.
+    # timeout 180s : les calculs ML (alertes 32 districts) peuvent dépasser 60s.
+    startCommand: "gunicorn config.wsgi:application --workers 1 --timeout 180 --bind 0.0.0.0:$PORT"
     healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
       - key: SECRET_KEY
-        generateValue: true        # Render génère une clé secrète
+        generateValue: true        # Render génère une clé aléatoire de 50 caractères
       - key: DEBUG
         value: "False"
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings.production
       - key: ALLOWED_HOSTS
-        value: ".onrender.com,.malaria-alert-extreme-nord.onrender.com"
+        value: ".onrender.com"
+      # Clé API Gemini : NE PAS la mettre ici (visible dans le repo).
+      # À renseigner manuellement dans le dashboard Render (Environment > Add).
       - key: GEMINI_API_KEY
-        sync: false                # À renseigner manuellement dans Render (Secret)
+        sync: false
       - key: GEMINI_MODEL
         value: gemini-2.5-flash
+      - key: SECURE_SSL_REDIRECT
+        value: "True"
+      - key: SESSION_COOKIE_SECURE
+        value: "True"
+      - key: CSRF_COOKIE_SECURE
+        value: "True"
       - key: WEB_CONCURRENCY
-        value: "2"
+        value: "1"

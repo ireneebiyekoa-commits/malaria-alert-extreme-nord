@@ -1,28 +1,37 @@
 #!/usr/bin/env bash
 # ============================================================
 # Script de build Render
-# Exécuté à chaque déploiement
+# Exécuté à chaque déploiement via render.yaml
 # ============================================================
 set -o errexit   # arrêt immédiat sur erreur
 
-echo "==> [1/5] Installation des dépendances Python..."
+echo "==> [1/6] Installation des dépendances Python..."
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install --no-cache-dir -r requirements.txt
+pip cache purge 2>/dev/null || true
 
-echo "==> [2/5] Collecte des fichiers statiques..."
+echo "==> [2/6] Collecte des fichiers statiques..."
 python manage.py collectstatic --noinput --clear
 
-echo "==> [3/5] Application des migrations..."
+echo "==> [3/6] Application des migrations..."
 python manage.py migrate --noinput
 
-echo "==> [4/5] Initialisation des données (si nécessaire)..."
-# Ces commandes sont idempotentes : elles ne dupliquent pas les données
+echo "==> [4/6] Initialisation des données de référence (idempotent)..."
 python manage.py seed_districts || echo "Districts déjà chargés"
 python manage.py load_initial_data || echo "Données déjà chargées"
+
+echo "==> [5/6] Calcul des seuils + performances officielles..."
 python manage.py compute_seuils || echo "Seuils déjà calculés"
+python manage.py load_performances_officielles || echo "Performances déjà chargées"
+
+echo "==> [6/6] Création des comptes (admin + 32 chefs de district)..."
 python manage.py seed_chefs_districts || echo "Comptes déjà créés"
 
-echo "==> [5/5] Chargement des artefacts ML personnalisés (si CSV fournis)..."
-python manage.py load_model_artifacts || echo "Pas de CSV externe — valeurs par défaut"
-
-echo "==> Build terminé avec succès."
+echo ""
+echo "============================================================"
+echo "  BUILD TERMINÉ AVEC SUCCÈS"
+echo "============================================================"
+echo "  - URL : https://<nom-de-l-app>.onrender.com"
+echo "  - Admin     : admin_gtr / admin@2026"
+echo "  - Chefs     : voir comptes_chefs_districts.csv"
+echo "============================================================"
