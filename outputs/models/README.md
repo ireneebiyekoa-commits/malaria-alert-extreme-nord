@@ -6,7 +6,7 @@ Ce dossier doit contenir les sorties du notebook **`modelisation_paludisme_final
 
 ```
 outputs/
-├── seuils_alerte.csv                     # P25/P75/P90 par district × mois calendaire
+├── seuils_alerte.csv                     # moyenne, ecart_type, seuil_alerte (M+σ), seuil_epidemio (M+2σ) par district × mois
 ├── metriques_walk_forward.csv            # RMSE / MAE / R² par algo × fold × horizon
 ├── importance_variables.csv              # MDI + Gain
 ├── permutation_importance.csv

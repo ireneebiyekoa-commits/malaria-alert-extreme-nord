@@ -6,7 +6,7 @@ Application Django de surveillance et de prévision épidémique du paludisme, d
 
 - **Tableau de bord** : KPI régionaux, carte choroplèthe d'incidence, séries temporelles climat-incidence, corrélations croisées (CCF).
 - **Prévisions** : modèles Random Forest et XGBoost validés en walk-forward, prévisions récursives à 1, 2 et 3 mois, avec analyse IA automatique et génération de rapports Word.
-- **Carte d'alerte épidémique** : 3 niveaux (vert / orange / rouge) basés sur les seuils OMS P75 / P90, filtrable par algorithme et horizon, export PDF.
+- **Carte d'alerte épidémique** : 3 niveaux (vert / orange / rouge) basés sur les seuils d'alerte (Moyenne + σ) et épidémiologique (Moyenne + 2σ), filtrable par algorithme et horizon, export PDF.
 - **Mise à jour des données** : import Excel mensuel + récupération automatique des données climatiques via l'API NASA POWER, recalcul automatique des prévisions.
 - **Gestion des rôles** : Administrateur (accès complet) et Chef de district (accès restreint à son district).
 

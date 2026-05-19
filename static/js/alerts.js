@@ -40,9 +40,18 @@
             const div = L.DomUtil.create('div', 'legend-card');
             div.innerHTML = `
                 <strong>Niveau d'alerte</strong>
-                <div class="legend-item"><span class="legend-color" style="background:#28a745"></span> Normal (&lt; P75)</div>
-                <div class="legend-item"><span class="legend-color" style="background:#fd7e14"></span> Élevé (P75 - P90)</div>
-                <div class="legend-item"><span class="legend-color" style="background:#dc3545"></span> Critique (≥ P90)</div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background:#28a745"></span>
+                    Normal (&lt; seuil d'alerte)
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background:#fd7e14"></span>
+                    Élevé (≥ seuil d'alerte, M + σ)
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background:#dc3545"></span>
+                    Critique (≥ seuil épidémiologique, M + 2σ)
+                </div>
             `;
             return div;
         };

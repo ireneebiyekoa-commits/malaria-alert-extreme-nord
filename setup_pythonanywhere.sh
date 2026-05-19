@@ -48,7 +48,7 @@ echo "[4/8] Chargement des observations historiques (2017-2025)..."
 python manage.py load_initial_data
 echo "       OK"
 
-echo "[5/8] Calcul des seuils d'alerte P75/P90 (384 entrées)..."
+echo "[5/8] Calcul des seuils d'alerte (M + σ et M + 2σ, 384 entrées)..."
 python manage.py compute_seuils
 echo "       OK"
 

@@ -135,7 +135,8 @@ def generer_rapport_previsions(
     doc.add_paragraph(
         f"Ce rapport présente les prévisions d'incidence palustre générées par le modèle "
         f"{algorithme} pour le {district} aux horizons 1, 2 et 3 mois. Les prévisions sont "
-        f"comparées aux seuils d'alerte épidémique (P75 et P90) définis selon les "
+        f"comparées au seuil d'alerte (Moyenne + 1 × Écart-type) et au seuil "
+        f"épidémiologique (Moyenne + 2 × Écarts-types), définis selon les "
         f"recommandations de l'Organisation Mondiale de la Santé (OMS, 2014). "
         f"Les niveaux d'alerte sont codés VERT (situation normale), ORANGE (élevé) et "
         f"ROUGE (critique)."
