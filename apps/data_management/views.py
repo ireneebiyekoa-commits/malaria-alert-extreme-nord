@@ -289,9 +289,8 @@ def recalculer_previsions():
                             'incidence_predite': p['incidence'],
                             'cas_predits': cas,
                             'niveau_alerte': niveau,
-                            # Conservé pour compat schéma (les valeurs sont équivalentes)
-                            'seuil_p75': s_alerte,
-                            'seuil_p90': s_epidemio,
+                            'seuil_alerte': s_alerte,
+                            'seuil_epidemio': s_epidemio,
                         }
                     )
                     nb += 1

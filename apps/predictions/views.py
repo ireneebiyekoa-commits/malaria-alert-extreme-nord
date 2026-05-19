@@ -109,6 +109,7 @@ def api_prevision(request):
                 'horizon': h,
                 'date': p['date_cible'].isoformat(),
                 'mois_label': format_mois_annee(p['date_cible']),
+                'mois_calendaire': p['mois_cible'],
                 'incidence': round(p['incidence'], 3),
                 'cas': round(cas, 0),
                 'niveau': niveau,
@@ -138,14 +139,21 @@ def api_prevision(request):
         metriques = {'rmse': 0, 'mae': 0, 'r2': 0}
 
     # Historique récent pour le graphique
+    # Chaque point inclut maintenant les seuils du mois calendaire correspondant
+    # (les seuils varient mois par mois -> les courbes dans le graphique sont aussi
+    #  des courbes saisonnières, pas des lignes droites)
     derniere = obs[-1].date
     historique_12m = []
     for o in obs[-12:]:
+        seuil = seuils.get(o.mois)
         historique_12m.append({
             'date': o.date.isoformat(),
             'mois_label': format_mois_annee(o.date),
+            'mois_calendaire': o.mois,
             'incidence': round(o.incidence, 3),
             'cas': o.cas_confirmes,
+            'seuil_alerte': round(seuil.seuil_alerte, 2) if seuil else None,
+            'seuil_epidemio': round(seuil.seuil_epidemio, 2) if seuil else None,
         })
 
     return JsonResponse({

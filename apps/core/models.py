@@ -135,8 +135,8 @@ class Prevision(models.Model):
         max_length=10, choices=NIVEAU_CHOICES, default='vert',
         verbose_name="Niveau d'alerte",
     )
-    seuil_p75 = models.FloatField(null=True, blank=True, verbose_name='Seuil P75')
-    seuil_p90 = models.FloatField(null=True, blank=True, verbose_name='Seuil P90')
+    seuil_alerte = models.FloatField(null=True, blank=True, verbose_name="Seuil d'alerte (M + σ)")
+    seuil_epidemio = models.FloatField(null=True, blank=True, verbose_name='Seuil épidémiologique (M + 2σ)')
     date_creation = models.DateTimeField(default=timezone.now, verbose_name='Date de calcul')
 
     class Meta:
@@ -185,11 +185,6 @@ class SeuilAlerte(models.Model):
     # Seuils dérivés (= valeurs stockées pour accès rapide)
     seuil_alerte = models.FloatField(default=0, verbose_name="Seuil d'alerte (M + σ)")
     seuil_epidemio = models.FloatField(default=0, verbose_name='Seuil épidémiologique (M + 2σ)')
-
-    # Champs historiques (DEPRECATED, gardés pour rétro-compat des migrations) :
-    p25 = models.FloatField(default=0, verbose_name='[deprecated] Percentile 25')
-    p75 = models.FloatField(default=0, verbose_name='[deprecated] Percentile 75')
-    p90 = models.FloatField(default=0, verbose_name='[deprecated] Percentile 90')
 
     class Meta:
         verbose_name = "Seuil d'alerte"

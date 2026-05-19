@@ -83,9 +83,6 @@ class Command(BaseCommand):
                     ecart_type=round(sigma, 4),
                     seuil_alerte=round(seuil_alerte, 4),
                     seuil_epidemio=round(seuil_epidemio, 4),
-                    # Champs legacy : on les remplit aussi pour rétro-compat éventuelle
-                    p75=round(seuil_alerte, 4),
-                    p90=round(seuil_epidemio, 4),
                 ))
 
             SeuilAlerte.objects.bulk_create(seuils_objs, batch_size=500)

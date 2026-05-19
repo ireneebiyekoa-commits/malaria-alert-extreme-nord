@@ -88,8 +88,8 @@ class Command(BaseCommand):
                             incidence_predite=p['incidence'],
                             cas_predits=cas,
                             niveau_alerte=niveau,
-                            seuil_p75=s_alerte,
-                            seuil_p90=s_epidemio,
+                            seuil_alerte=s_alerte,
+                            seuil_epidemio=s_epidemio,
                         )
                         nb_total += 1
                         district_ok = True

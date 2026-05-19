@@ -29,7 +29,8 @@ class MeteoAdmin(admin.ModelAdmin):
 @admin.register(Prevision)
 class PrevisionAdmin(admin.ModelAdmin):
     list_display = ('district', 'algorithme', 'horizon', 'date_origine', 'date_cible',
-                    'incidence_predite', 'cas_predits', 'niveau_alerte')
+                    'incidence_predite', 'cas_predits', 'niveau_alerte',
+                    'seuil_alerte', 'seuil_epidemio')
     list_filter = ('algorithme', 'horizon', 'niveau_alerte', 'date_origine')
     search_fields = ('district__nom',)
     date_hierarchy = 'date_origine'
@@ -37,7 +38,8 @@ class PrevisionAdmin(admin.ModelAdmin):
 
 @admin.register(SeuilAlerte)
 class SeuilAlerteAdmin(admin.ModelAdmin):
-    list_display = ('district', 'mois_calendaire', 'p25', 'p75', 'p90')
+    list_display = ('district', 'mois_calendaire', 'moyenne', 'ecart_type',
+                    'seuil_alerte', 'seuil_epidemio')
     list_filter = ('mois_calendaire',)
     search_fields = ('district__nom',)
 

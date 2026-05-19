@@ -14,6 +14,9 @@ class Command(BaseCommand):
         outputs = settings.ML_OUTPUTS_DIR
 
         # ---------- Seuils d'alerte ----------
+        # NB: la méthode standard est désormais le calcul automatique via
+        # `python manage.py compute_seuils` (formule M+σ et M+2σ).
+        # Cette section ne sert qu'à charger un CSV externe pré-calculé.
         seuils_file = outputs / 'seuils_alerte.csv'
         if seuils_file.exists():
             df = pd.read_csv(seuils_file)
@@ -23,19 +26,27 @@ class Command(BaseCommand):
                 SeuilAlerte.objects.all().delete()
                 for _, row in df.iterrows():
                     d = districts.get(row['district'])
-                    if d:
-                        SeuilAlerte.objects.create(
-                            district=d,
-                            mois_calendaire=int(row['mois']),
-                            p25=float(row.get('p25', 0) or 0),
-                            p75=float(row['p75']),
-                            p90=float(row['p90']),
-                        )
-                        nb += 1
-            self.stdout.write(self.style.SUCCESS(f"Seuils chargés : {nb}"))
+                    if not d:
+                        continue
+                    # Compatibilité : si le CSV contient les nouveaux noms, on les utilise.
+                    # Sinon, fallback : utiliser p75/p90 du CSV comme seuils alerte/épidémio.
+                    moyenne = float(row.get('moyenne', 0) or 0)
+                    ecart = float(row.get('ecart_type', 0) or 0)
+                    s_alerte = float(row.get('seuil_alerte') or row.get('p75', 0))
+                    s_epidemio = float(row.get('seuil_epidemio') or row.get('p90', 0))
+                    SeuilAlerte.objects.create(
+                        district=d,
+                        mois_calendaire=int(row['mois']),
+                        moyenne=moyenne,
+                        ecart_type=ecart,
+                        seuil_alerte=s_alerte,
+                        seuil_epidemio=s_epidemio,
+                    )
+                    nb += 1
+            self.stdout.write(self.style.SUCCESS(f"Seuils chargés depuis CSV : {nb}"))
         else:
             self.stdout.write(self.style.WARNING(
-                f"{seuils_file} introuvable. Skipping."
+                f"{seuils_file} introuvable. Lancez `compute_seuils` à la place."
             ))
 
         # ---------- Performances ----------

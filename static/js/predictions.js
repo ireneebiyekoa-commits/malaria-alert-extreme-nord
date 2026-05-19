@@ -195,38 +195,59 @@
             });
         }
 
-        // ===== Lignes des seuils épidémiologiques =====
-        // Pour la lisibilité, on prend les seuils du PREMIER horizon prédit
-        // (les seuils varient selon le mois calendaire — on affiche celui de h=1
-        //  comme référence visuelle).
+        // ===== COURBES de seuils saisonniers =====
+        // Chaque mois calendaire a SON seuil propre (il varie selon la saison).
+        // On construit donc deux séries de valeurs alignées sur labelsAll :
+        //   - une valeur de seuil_alerte pour chaque point (historique + prévision)
+        //   - idem pour seuil_epidemio
+        // Cela produit deux *courbes* saisonnières, pas des lignes droites.
         const referenceList = prevList || prevListXGB || prevListRF || [];
-        const seuilAlerteRef = referenceList[0] ? referenceList[0].seuil_alerte : null;
-        const seuilEpidemioRef = referenceList[0] ? referenceList[0].seuil_epidemio : null;
 
-        if (seuilAlerteRef !== null && seuilAlerteRef > 0) {
+        // Concaténer historique + référence de prévisions pour avoir les seuils
+        // de TOUS les points du graphique
+        const allPoints = [...data.historique, ...referenceList];
+        const seuilAlerteCurve = allPoints.map(pt =>
+            (pt.seuil_alerte != null && pt.seuil_alerte > 0) ? pt.seuil_alerte : null
+        );
+        const seuilEpidemioCurve = allPoints.map(pt =>
+            (pt.seuil_epidemio != null && pt.seuil_epidemio > 0) ? pt.seuil_epidemio : null
+        );
+
+        // Aligner longueur sur labelsAll (au cas où en mode comparaison RF+XGB,
+        // labelsAll inclut les deux séries — on pad avec null)
+        while (seuilAlerteCurve.length < labelsAll.length) seuilAlerteCurve.push(null);
+        while (seuilEpidemioCurve.length < labelsAll.length) seuilEpidemioCurve.push(null);
+
+        if (seuilAlerteCurve.some(v => v !== null)) {
             datasets.push({
-                label: `Seuil d'alerte (${seuilAlerteRef.toFixed(2)})`,
-                data: labelsAll.map(() => seuilAlerteRef),
+                label: "Seuil d'alerte (M + σ)",
+                data: seuilAlerteCurve,
                 borderColor: '#fd7e14',
-                borderWidth: 1.5,
-                borderDash: [4, 4],
+                backgroundColor: 'rgba(253, 126, 20, 0.05)',
+                borderWidth: 2,
+                borderDash: [5, 4],
                 pointRadius: 0,
+                pointHoverRadius: 4,
                 fill: false,
-                tension: 0,
+                tension: 0.3,           // courbe douce
                 order: 2,
+                spanGaps: true,
             });
         }
-        if (seuilEpidemioRef !== null && seuilEpidemioRef > 0) {
+        if (seuilEpidemioCurve.some(v => v !== null)) {
             datasets.push({
-                label: `Seuil épidémiologique (${seuilEpidemioRef.toFixed(2)})`,
-                data: labelsAll.map(() => seuilEpidemioRef),
+                label: 'Seuil épidémiologique (M + 2σ)',
+                data: seuilEpidemioCurve,
                 borderColor: '#c0392b',
-                borderWidth: 1.5,
+                backgroundColor: 'rgba(192, 57, 43, 0.05)',
+                borderWidth: 2,
                 borderDash: [8, 4],
                 pointRadius: 0,
+                pointHoverRadius: 4,
                 fill: false,
-                tension: 0,
+                tension: 0.3,
                 order: 2,
+                spanGaps: true,
             });
         }
 
