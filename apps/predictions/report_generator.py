@@ -11,9 +11,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import matplotlib
-matplotlib.use('Agg')   # backend non-interactif (serveur)
-import matplotlib.pyplot as plt
+# matplotlib est OPTIONNEL : si absent (déploiement allégé PythonAnywhere),
+# le rapport est généré sans graphique mais reste pleinement fonctionnel.
+try:
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    _MATPLOTLIB_OK = True
+except ImportError:
+    _MATPLOTLIB_OK = False
+
 from django.conf import settings
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -208,6 +215,8 @@ def generer_rapport_previsions(
 
 def _generer_graphique(historique, previsions, district, algorithme):
     """Génère un graphique matplotlib des prévisions et le retourne en BytesIO."""
+    if not _MATPLOTLIB_OK:
+        return None
     try:
         dates_hist = [h['date'] for h in historique[-12:]]
         inc_hist = [h['incidence'] for h in historique[-12:]]

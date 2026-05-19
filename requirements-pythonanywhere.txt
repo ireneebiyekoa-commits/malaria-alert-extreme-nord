@@ -1,0 +1,42 @@
+# ============================================================
+# Dépendances ALLÉGÉES pour PythonAnywhere Free Tier (512 Mo)
+# ============================================================
+# Différences vs requirements.txt :
+#   - PAS de matplotlib / seaborn (graphique du Word désactivé)
+#   - PAS de psycopg2-binary (SQLite uniquement)
+#   - PAS de gunicorn (PythonAnywhere a son propre serveur)
+#   - PAS de dj-database-url (SQLite)
+#   - PAS de django-debug-toolbar (dev only)
+#   - PAS de django-bcrypt (doublon avec bcrypt)
+#   - PAS de scipy (déjà installé en transitif par scikit-learn)
+# ============================================================
+
+# Framework web
+Django==4.2.16
+python-decouple==3.8
+python-dotenv==1.0.1
+whitenoise==6.7.0
+
+# Authentification
+bcrypt==4.2.0
+
+# ML (compatibilité avec les .pkl du notebook)
+numpy==1.26.4
+pandas==2.2.3
+scikit-learn==1.5.2
+xgboost==2.1.2
+joblib==1.4.2
+
+# Fichiers
+openpyxl==3.1.5
+xlsxwriter==3.2.0
+python-docx==1.1.2
+
+# PDF
+reportlab==4.2.5
+
+# HTTP (NASA POWER)
+requests==2.32.3
+
+# IA générative
+google-generativeai==0.8.3

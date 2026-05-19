@@ -30,9 +30,10 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-echo "[1/8] Installation des dépendances Python..."
+echo "[1/8] Installation des dépendances Python (version allégée)..."
 pip install --upgrade pip -q
-pip install -r requirements.txt -q
+pip install --no-cache-dir -r requirements-pythonanywhere.txt
+pip cache purge 2>/dev/null || true
 echo "       OK"
 
 echo "[2/8] Application des migrations Django..."
