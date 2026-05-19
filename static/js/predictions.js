@@ -293,8 +293,11 @@
     }
 
     if (btnExportWord) {
-        btnExportWord.addEventListener('click', function () {
-            if (!currentData) { alert('Générez d\'abord les prévisions.'); return; }
+        btnExportWord.addEventListener('click', async function () {
+            if (!currentData) {
+                alert('Générez d\'abord les prévisions (cliquez sur le bouton bleu).');
+                return;
+            }
 
             const prevs = Array.isArray(currentData.previsions)
                 ? currentData.previsions
@@ -311,7 +314,9 @@
                     cas: p.cas,
                     niveau: p.niveau,
                 })),
-                historique: currentData.historique.map(h => ({ date: h.mois_label, incidence: h.incidence })),
+                historique: currentData.historique.map(h => ({
+                    date: h.mois_label, incidence: h.incidence
+                })),
                 metriques: currentData.metriques,
                 analyse_ia: currentData.analyse_ia || '',
             };
@@ -319,28 +324,69 @@
             btnExportWord.disabled = true;
             btnExportWord.innerHTML = '<span class="loader"></span> Génération...';
 
-            fetch('/previsions/api/rapport/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken'),
-                },
-                body: JSON.stringify(payload),
-            })
-                .then(r => r.blob())
-                .then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `rapport_${currentData.district_court}_${new Date().toISOString().slice(0,10)}.docx`;
-                    a.click();
+            try {
+                const res = await fetch('/previsions/api/rapport/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                // Vérification du statut HTTP
+                if (!res.ok) {
+                    let errMsg = `Erreur HTTP ${res.status}`;
+                    try {
+                        const errData = await res.json();
+                        if (errData.error) errMsg = errData.error;
+                    } catch (_) { /* réponse non JSON */ }
+                    throw new Error(errMsg);
+                }
+
+                // Vérifier que c'est bien un fichier Word
+                const ctype = res.headers.get('Content-Type') || '';
+                if (!ctype.includes('wordprocessingml')) {
+                    throw new Error('Le serveur n\'a pas renvoyé un fichier Word.');
+                }
+
+                // Récupérer le blob
+                const blob = await res.blob();
+                if (blob.size < 1000) {
+                    throw new Error('Le fichier généré est anormalement petit.');
+                }
+
+                // Téléchargement robuste : ajout au DOM avant click
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const today = new Date().toISOString().slice(0, 10);
+                a.href = url;
+                a.download = `rapport_${currentData.district_court.replace(/\s+/g, '_')}_${selAlgo.value}_h${selHorizon.value}_${today}.docx`;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                // Nettoyage après un court délai (laisse le temps au téléchargement)
+                setTimeout(() => {
+                    document.body.removeChild(a);
                     window.URL.revokeObjectURL(url);
-                })
-                .catch(err => alert('Erreur export Word : ' + err.message))
-                .finally(() => {
+                }, 200);
+
+                // Feedback visuel
+                btnExportWord.innerHTML = '✓ Téléchargé';
+                setTimeout(() => {
+                    btnExportWord.innerHTML = '📝 Rapport Word';
+                    btnExportWord.disabled = false;
+                }, 2000);
+                return;
+            } catch (err) {
+                console.error('Erreur export Word :', err);
+                alert('Erreur lors de l\'export Word :\n' + err.message);
+            } finally {
+                if (btnExportWord.disabled && !btnExportWord.innerHTML.includes('Téléchargé')) {
                     btnExportWord.disabled = false;
                     btnExportWord.innerHTML = '📝 Rapport Word';
-                });
+                }
+            }
         });
     }
 })();
