@@ -37,9 +37,10 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 X_FRAME_OPTIONS = 'DENY'
 
-# CSRF_TRUSTED_ORIGINS pour Render
+# CSRF_TRUSTED_ORIGINS pour Render : wildcard + URL explicite
 CSRF_TRUSTED_ORIGINS = [
     'https://*.onrender.com',
+    'https://malaria-alert-extreme-nord.onrender.com',
 ]
 if _render_host:
     CSRF_TRUSTED_ORIGINS.append(f'https://{_render_host}')
@@ -52,9 +53,16 @@ if _render_host:
 #   - Cache HTTP géré par les headers WhiteNoise (Cache-Control: public, max-age=...)
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
-# --- Sessions ---
+# --- Sessions et cookies ---
+# SESSION_COOKIE_HTTPONLY = True : le cookie de session n'est pas accessible en JS
+#   (sécurité contre XSS, valeur par défaut Django, bonne pratique)
 SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = True
+# CSRF_COOKIE_HTTPONLY = False : le cookie csrftoken DOIT être lisible en JS pour
+#   que nos appels AJAX (chatbot, analyse IA, export Word) puissent le passer en
+#   header X-CSRFToken. Mettre True casserait toute la couche AJAX.
+CSRF_COOKIE_HTTPONLY = False
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
 
 # --- Logs sur stdout (visible dans dashboard Render) ---
 LOGGING = {
