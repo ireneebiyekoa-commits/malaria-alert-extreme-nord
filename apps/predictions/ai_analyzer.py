@@ -206,7 +206,9 @@ def _construire_prompt(
     return f"""Tu es un expert en épidémiologie du paludisme dans la région de l'Extrême-Nord du Cameroun.
 Analyse les prévisions d'incidence palustre suivantes pour le {district}.
 
-Contexte : Le système d'alerte précoce s'appuie sur le modèle {algorithme} validé sur la période 2017-2025.
+Contexte : Le système d'alerte précoce s'appuie sur l'algorithme {algorithme} validé sur la période 2017-2025.
+Quand l'algorithme est « Méta-modèle adaptatif », le système utilise un Ridge stacking RF + XGBoost à l'horizon 1 mois (le plus précis selon le test de Diebold-Mariano), puis bascule sur XGBoost récursif aux horizons 2 et 3 mois (le stacking devient contre-productif aux horizons longs).
+
 Les seuils d'alerte sont définis selon la **méthode des écarts-types** (recommandation OMS), calculés par district et par mois calendaire à partir de l'historique :
 - **Seuil d'alerte** = Moyenne historique + 1 × Écart-type
 - **Seuil épidémiologique** = Moyenne historique + 2 × Écarts-types

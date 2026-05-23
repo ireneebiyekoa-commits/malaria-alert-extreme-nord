@@ -248,7 +248,76 @@
                 <tr><td>reg_alpha (L1)</td><td>0</td></tr>
             </table>
 
-            <h4 class="mt-4">4.3 — Pourquoi pas un modèle classique (ARIMA, régression linéaire) ?</h4>
+            <h4 class="mt-4">4.3 — Méta-modèle adaptatif (stacking Ridge)</h4>
+            <p>
+                Les modèles de base souffrent de deux limites pratiques (Mémoire §3.2.5) :
+                d'une part, les districts à faible incidence sont systématiquement
+                surestimés (la fonction de perte quadratique pondère davantage les
+                grands écarts) ; d'autre part, la <em>prévision récursive</em> propage
+                les erreurs aux horizons longs (Marcellino et al., 2006 ; Taieb et al., 2012).
+            </p>
+            <p>
+                Pour exploiter la complémentarité partielle des deux apprenants (RF apprend
+                par <em>bagging</em>, XGB par <em>boosting</em>), un <strong>méta-modèle Ridge
+                de stacking</strong> a été construit. Le vecteur de méta-variables comporte
+                six composantes :
+            </p>
+            <div style="text-align:center; padding: var(--space-3); background: var(--gray-50); border-radius: var(--radius-md); margin: var(--space-3) 0; font-family: var(--font-serif); font-size: 1.0rem;">
+                ŷ<sub>META</sub> = β<sub>0</sub> + β<sub>1</sub> · ŷ<sub>XGB</sub> + β<sub>2</sub> · ŷ<sub>RF</sub> + β<sub>3</sub> · Δ + β<sub>4</sub> · sin(2πm/12) + β<sub>5</sub> · cos(2πm/12) + β<sub>6</sub> · inc<sub>lag1</sub>
+            </div>
+            <p>
+                avec Δ = ŷ<sub>XGB</sub> − ŷ<sub>RF</sub> (signale l'avantage relatif de XGB).
+                Le méta-apprenant est une <strong>régression Ridge (α = 0,5)</strong>, sans
+                contrainte de positivité des coefficients : un coefficient négatif sur RF
+                aux horizons longs lui permet de <em>neutraliser le biais</em> des prévisions
+                récursives dégradées.
+            </p>
+
+            <h4 class="mt-4">4.4 — Stratégie adaptative validée par test de Diebold-Mariano</h4>
+            <p>
+                Aucun modèle ne domine à tous les horizons (Tableau 3.7 du mémoire — test
+                de Diebold-Mariano avec noyau HAC Newey-West) :
+            </p>
+            <ul>
+                <li><strong>h = 1 mois</strong> : le méta-modèle Ridge bat XGBoost
+                    (RMSE 2,866 vs 2,960 ; p = 0,0131)</li>
+                <li><strong>h = 2 mois</strong> : XGBoost et méta-modèle équivalents
+                    (RMSE 3,821 vs 3,856 ; p = 0,14, non significatif)</li>
+                <li><strong>h = 3 mois</strong> : XGBoost <em>significativement supérieur</em>
+                    au méta-modèle (RMSE 4,328 vs 4,508 ; p &lt; 0,001)</li>
+            </ul>
+            <p>
+                La <strong>règle de sélection adaptative</strong> retenue est donc :
+            </p>
+            <table class="table mt-3">
+                <thead>
+                    <tr><th>Horizon</th><th>Estimateur retenu</th><th>Justification</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>h = 1</strong></td>
+                        <td>Méta-modèle Ridge (stacking RF + XGB)</td>
+                        <td>Gain RMSE +3,2 % vs XGB (DM p = 0,013)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>h = 2</strong></td>
+                        <td>XGBoost récursif</td>
+                        <td>Stacking non significatif</td>
+                    </tr>
+                    <tr>
+                        <td><strong>h = 3</strong></td>
+                        <td>XGBoost récursif</td>
+                        <td>Stacking contre-productif (DM p &lt; 0,001)</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>
+                Ce <strong>méta-modèle adaptatif</strong> est le mode par défaut de la plateforme.
+                Il combine le pouvoir explicatif du stacking aux courtes échéances et la
+                robustesse de XGBoost aux horizons plus longs.
+            </p>
+
+            <h4 class="mt-4">4.5 — Pourquoi pas un modèle classique (ARIMA, régression linéaire) ?</h4>
             <p>
                 Les modèles statistiques traditionnels ne capturent pas efficacement :
             </p>
@@ -362,46 +431,78 @@
                 à 1 (prévision parfaite). Un R² > 0,7 traduit une excellente capacité prédictive.
             </p>
 
-            <h4 class="mt-4">Résultats officiels</h4>
+            <h4 class="mt-4">Résultats officiels (folds 2 à 5, n = 1 536 prévisions)</h4>
             <p>
-                Les performances obtenues sur l'ensemble des 5 plis de validation walk-forward
-                (n = 1 600 prédictions par fold) sont les suivantes :
+                Les performances comparées des trois approches (Mémoire Tableau 3.5 et 3.9)
+                sont les suivantes :
             </p>
             <div class="table-container">
                 <table class="table">
                     <thead>
                         <tr>
                             <th>Algorithme</th><th>Horizon</th>
-                            <th class="text-center">RMSE</th>
-                            <th class="text-center">MAE</th>
+                            <th class="text-center">RMSE (‰)</th>
+                            <th class="text-center">MAE (‰)</th>
                             <th class="text-center">R²</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr><td rowspan="3"><strong>Random Forest</strong></td>
-                            <td>1 mois</td><td class="text-center">3,23</td><td class="text-center">2,04</td>
-                            <td class="text-center"><span class="badge badge-vert">0,783</span></td></tr>
-                        <tr><td>2 mois</td><td class="text-center">4,35</td><td class="text-center">2,77</td>
-                            <td class="text-center"><span class="badge badge-orange">0,618</span></td></tr>
-                        <tr><td>3 mois</td><td class="text-center">5,05</td><td class="text-center">3,22</td>
-                            <td class="text-center"><span class="badge badge-orange">0,506</span></td></tr>
+                            <td>1 mois</td>
+                            <td class="text-center">2,914</td>
+                            <td class="text-center">1,888</td>
+                            <td class="text-center"><span class="badge badge-vert">0,789</span></td></tr>
+                        <tr><td>2 mois</td>
+                            <td class="text-center">4,013</td>
+                            <td class="text-center">2,585</td>
+                            <td class="text-center"><span class="badge badge-orange">0,617</span></td></tr>
+                        <tr><td>3 mois</td>
+                            <td class="text-center">4,730</td>
+                            <td class="text-center">3,038</td>
+                            <td class="text-center"><span class="badge badge-orange">0,494</span></td></tr>
                         <tr style="border-top: 2px solid var(--minsante-blue);">
                             <td rowspan="3"><strong>XGBoost</strong></td>
-                            <td>1 mois</td><td class="text-center">3,21</td><td class="text-center">2,04</td>
-                            <td class="text-center"><span class="badge badge-vert">0,783</span></td></tr>
-                        <tr><td>2 mois</td><td class="text-center">4,04</td><td class="text-center">2,63</td>
-                            <td class="text-center"><span class="badge badge-vert">0,665</span></td></tr>
-                        <tr><td>3 mois</td><td class="text-center">4,54</td><td class="text-center">2,97</td>
-                            <td class="text-center"><span class="badge badge-orange">0,598</span></td></tr>
+                            <td>1 mois</td>
+                            <td class="text-center">2,960</td>
+                            <td class="text-center">1,896</td>
+                            <td class="text-center"><span class="badge badge-vert">0,781</span></td></tr>
+                        <tr><td>2 mois</td>
+                            <td class="text-center">3,821</td>
+                            <td class="text-center">2,471</td>
+                            <td class="text-center"><span class="badge badge-vert">0,653</span></td></tr>
+                        <tr><td>3 mois</td>
+                            <td class="text-center">4,328</td>
+                            <td class="text-center">2,812</td>
+                            <td class="text-center"><span class="badge badge-orange">0,577</span></td></tr>
+                        <tr style="border-top: 2px solid var(--cm-yellow); background: rgba(252, 209, 22, 0.08);">
+                            <td rowspan="3"><strong>Méta-modèle adaptatif</strong><br>
+                                <span class="text-muted" style="font-size: 0.78rem;">(mode par défaut)</span></td>
+                            <td>1 mois</td>
+                            <td class="text-center"><strong>2,866</strong></td>
+                            <td class="text-center">1,924</td>
+                            <td class="text-center"><span class="badge badge-vert"><strong>0,795</strong></span></td></tr>
+                        <tr style="background: rgba(252, 209, 22, 0.08);">
+                            <td>2 mois</td>
+                            <td class="text-center">3,821</td>
+                            <td class="text-center">2,471</td>
+                            <td class="text-center"><span class="badge badge-vert">0,653</span></td></tr>
+                        <tr style="background: rgba(252, 209, 22, 0.08);">
+                            <td>3 mois</td>
+                            <td class="text-center">4,328</td>
+                            <td class="text-center">2,812</td>
+                            <td class="text-center"><span class="badge badge-orange">0,577</span></td></tr>
                     </tbody>
                 </table>
             </div>
             <p class="mt-3 text-muted" style="font-size: 0.92rem;">
-                <strong>Lecture</strong> : XGBoost surpasse Random Forest dès l'horizon de
-                2 mois (R² = 0,665 vs 0,618), grâce à sa capacité à modéliser les dépendances
-                séquentielles. À 3 mois, l'incertitude augmente naturellement (R² ≈ 0,5 – 0,6),
-                ce qui justifie l'usage prudent des prévisions long terme — d'où le triptyque
-                d'horizons (1, 2 et 3 mois) plutôt qu'un horizon unique.
+                <strong>Lecture</strong> : à <strong>h = 1 mois</strong>, le méta-modèle Ridge
+                améliore le RMSE de 3,2 % vs XGBoost (2,866 contre 2,960). À <strong>h = 2 et 3</strong>,
+                XGBoost reste l'estimateur optimal (le stacking n'apporte rien, voire dégrade).
+                La stratégie adaptative combine donc ces deux avantages — c'est elle qui est
+                utilisée par défaut dans la plateforme. À 3 mois, l'incertitude augmente
+                naturellement (R² ≈ 0,58), ce qui justifie l'usage prudent des prévisions long
+                terme et la mise en place d'horizons multiples (1, 2 et 3 mois) plutôt qu'un
+                horizon unique.
             </p>
         </div>
     </div>

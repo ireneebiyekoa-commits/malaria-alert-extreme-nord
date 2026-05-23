@@ -15,8 +15,8 @@ from apps.core.utils import filter_by_user_role, format_mois_annee
 
 from .ai_analyzer import analyser_previsions
 from .chatbot import repondre as chatbot_repondre
-from .engine import predict_recursive
-from .ml_loader import get_status, is_ready
+from .engine import predict, predict_recursive
+from .ml_loader import get_status, is_meta_available, is_ready
 from .report_generator import generer_rapport_previsions
 
 
@@ -32,12 +32,24 @@ def index(request):
     else:
         districts = District.objects.none()
 
+    # Liste d'algorithmes proposés : META (adaptatif, recommandé) en premier,
+    # puis RF et XGB pour analyse comparative, puis COMP pour superposer RF + XGB.
+    algos = []
+    if is_meta_available():
+        algos.append(('META', 'Méta-modèle adaptatif (recommandé)'))
+    algos.extend([
+        ('XGB', 'XGBoost'),
+        ('RF', 'Random Forest'),
+        ('COMP', 'Comparaison RF / XGB'),
+    ])
+
     context = {
         'districts': districts,
-        'algorithmes': [('RF', 'Random Forest'), ('XGB', 'XGBoost'), ('COMP', 'Comparaison RF / XGB')],
+        'algorithmes': algos,
         'horizons': [1, 2, 3],
         'ml_status': get_status(),
         'ml_ready': is_ready(),
+        'meta_available': is_meta_available(),
     }
     return render(request, 'predictions/index.html', context)
 
@@ -91,7 +103,11 @@ def api_prevision(request):
     horizons = list(range(1, horizon + 1))
 
     def _build_predictions(algo_code):
-        preds = predict_recursive(algo_code, district.nom, historic_df, horizons=horizons)
+        # META = méta-modèle adaptatif (h=1 Ridge stacking, h=2/3 XGBoost récursif)
+        if algo_code == 'META':
+            preds = predict('META', district.nom, historic_df, horizons=horizons)
+        else:
+            preds = predict_recursive(algo_code, district.nom, historic_df, horizons=horizons)
         result = []
         for h, p in preds.items():
             seuil = seuils.get(p['mois_cible'])
@@ -105,7 +121,7 @@ def api_prevision(request):
                 elif p['incidence'] >= seuil.seuil_alerte:
                     niveau = 'orange'
             cas = (p['incidence'] * district.population) / 1000
-            result.append({
+            entry = {
                 'horizon': h,
                 'date': p['date_cible'].isoformat(),
                 'mois_label': format_mois_annee(p['date_cible']),
@@ -116,7 +132,15 @@ def api_prevision(request):
                 'seuil_alerte': round(s_alerte, 2),
                 'seuil_epidemio': round(s_epidemio, 2),
                 'moyenne_hist': round(moyenne_hist, 2),
-            })
+            }
+            # Pour META : indiquer la source réelle (Ridge pour h=1, XGB pour h=2/3)
+            if 'source' in p:
+                entry['source'] = p['source']
+            if 'pred_rf' in p:
+                entry['pred_rf'] = p['pred_rf']
+            if 'pred_xgb' in p:
+                entry['pred_xgb'] = p['pred_xgb']
+            result.append(entry)
         return result
 
     if algo == 'COMP':
@@ -126,9 +150,13 @@ def api_prevision(request):
     else:
         previsions = _build_predictions(algo)
 
-    # Métriques agrégées sur les 5 folds
-    perfs = Performance.objects.filter(algorithme=algo if algo != 'COMP' else 'XGB',
-                                       horizon=horizon)
+    # Métriques agrégées
+    # Pour META on lit la ligne 'META' qui correspond au méta-modèle adaptatif
+    # (h=1 Ridge, h=2/3 XGBoost), publiée dans le mémoire Tableau 3.9.
+    algo_key = algo
+    if algo == 'COMP':
+        algo_key = 'XGB'      # comparaison : on affiche les performances XGB par défaut
+    perfs = Performance.objects.filter(algorithme=algo_key, horizon=horizon)
     if perfs.exists():
         metriques = {
             'rmse': round(perfs.aggregate(m=Avg('rmse'))['m'] or 0, 3),
@@ -317,9 +345,17 @@ def api_export_excel_global(request):
             })
         historic_df = pd.DataFrame(rows)
 
-        for algo in ['RF', 'XGB']:
+        algos_to_export = ['RF', 'XGB']
+        if is_meta_available():
+            algos_to_export.append('META')
+
+        for algo in algos_to_export:
             try:
-                preds = predict_recursive(algo, district.nom, historic_df, horizons=[1, 2, 3])
+                if algo == 'META':
+                    preds = predict('META', district.nom, historic_df, horizons=[1, 2, 3])
+                else:
+                    preds = predict_recursive(algo, district.nom, historic_df,
+                                               horizons=[1, 2, 3])
             except Exception:
                 continue
             for h, p in preds.items():

@@ -114,6 +114,7 @@ class Prevision(models.Model):
     ALGO_CHOICES = [
         ('RF', 'Random Forest'),
         ('XGB', 'XGBoost'),
+        ('META', 'Méta-modèle adaptatif (Ridge h=1 + XGBoost h=2/3)'),
     ]
     NIVEAU_CHOICES = [
         ('vert', 'Normal'),

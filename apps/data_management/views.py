@@ -13,8 +13,8 @@ from django.urls import reverse
 from apps.accounts.decorators import admin_required
 from apps.core.models import (District, ImportLog, Meteo, Observation,
                               Prevision, SeuilAlerte)
-from apps.predictions.engine import predict_recursive
-from apps.predictions.ml_loader import is_ready
+from apps.predictions.engine import predict, predict_recursive
+from apps.predictions.ml_loader import is_meta_available, is_ready
 
 from .nasa_power import fetch_climatic_data
 
@@ -261,9 +261,17 @@ def recalculer_previsions():
             historic_df = pd.DataFrame(rows)
             derniere_date = obs[-1].date
 
-            for algo in ['RF', 'XGB']:
+            algos_to_compute = ['RF', 'XGB']
+            if is_meta_available():
+                algos_to_compute.append('META')
+
+            for algo in algos_to_compute:
                 try:
-                    preds = predict_recursive(algo, district.nom, historic_df, horizons=[1, 2, 3])
+                    if algo == 'META':
+                        preds = predict('META', district.nom, historic_df, horizons=[1, 2, 3])
+                    else:
+                        preds = predict_recursive(algo, district.nom, historic_df,
+                                                   horizons=[1, 2, 3])
                 except Exception:
                     continue
 

@@ -17,8 +17,8 @@ from reportlab.platypus import (Paragraph, SimpleDocTemplate, Spacer, Table,
 from apps.core.models import District, Meteo, Observation, Prevision, SeuilAlerte
 from apps.core.utils import filter_by_user_role, format_mois_annee
 
-from apps.predictions.engine import predict_recursive
-from apps.predictions.ml_loader import is_ready
+from apps.predictions.engine import predict, predict_recursive
+from apps.predictions.ml_loader import is_meta_available, is_ready
 
 
 @login_required
@@ -33,9 +33,14 @@ def index(request):
     else:
         districts = District.objects.none()
 
+    algos = []
+    if is_meta_available():
+        algos.append(('META', 'Méta-modèle adaptatif (recommandé)'))
+    algos.extend([('XGB', 'XGBoost'), ('RF', 'Random Forest')])
+
     context = {
         'districts': districts,
-        'algorithmes': [('XGB', 'XGBoost'), ('RF', 'Random Forest')],
+        'algorithmes': algos,
         'horizons': [1, 2, 3],
         'is_admin': user.is_admin,
     }
@@ -88,7 +93,10 @@ def api_alertes(request):
         historic_df = pd.DataFrame(rows)
 
         try:
-            preds = predict_recursive(algo, district.nom, historic_df, horizons=[horizon])
+            if algo == 'META':
+                preds = predict('META', district.nom, historic_df, horizons=[horizon])
+            else:
+                preds = predict_recursive(algo, district.nom, historic_df, horizons=[horizon])
         except Exception:
             continue
 

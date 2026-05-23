@@ -1,9 +1,13 @@
 """
-Génère et stocke en base les prévisions à h=1, 2 et 3 pour tous les districts
-et les 2 algorithmes (RF et XGB).
+Génère et stocke en base les prévisions à h=1, 2 et 3 pour tous les districts.
 
-Idempotent : recalcule à partir de la dernière observation en base.
-Utilise les seuils SeuilAlerte (méthode des écarts-types) pour déterminer les niveaux.
+Algorithmes stockés :
+  - 'RF'   : Random Forest récursif
+  - 'XGB'  : XGBoost récursif
+  - 'META' : Méta-modèle adaptatif (Ridge h=1, XGBoost h=2/3) — recommandé
+
+Idempotent : remplace toutes les prévisions existantes.
+Utilise les seuils SeuilAlerte (M+σ, M+2σ) pour déterminer les niveaux.
 """
 import pandas as pd
 from django.core.management.base import BaseCommand
@@ -11,13 +15,13 @@ from django.db import transaction
 
 from apps.core.models import (District, Meteo, Observation, Prevision,
                               SeuilAlerte)
-from apps.predictions.engine import predict_recursive
-from apps.predictions.ml_loader import is_ready
+from apps.predictions.engine import predict, predict_recursive
+from apps.predictions.ml_loader import is_meta_available, is_ready
 
 
 class Command(BaseCommand):
-    help = ("Génère et stocke les prévisions (32 districts × 2 algos × 3 horizons "
-            "= 192 entrées) en utilisant les seuils écart-type pour les niveaux.")
+    help = ("Génère et stocke les prévisions (32 districts × 3 algos × 3 horizons "
+            "= 288 entrées maximum) en utilisant les seuils écart-type.")
 
     def handle(self, *args, **options):
         if not is_ready():
@@ -26,7 +30,15 @@ class Command(BaseCommand):
             ))
             return
 
-        # Cache des seuils
+        algos = ['RF', 'XGB']
+        if is_meta_available():
+            algos.append('META')
+            self.stdout.write(self.style.SUCCESS("Méta-modèle adaptatif détecté."))
+        else:
+            self.stdout.write(self.style.WARNING(
+                "Méta-modèle absent : on génère uniquement RF et XGB."
+            ))
+
         seuils_map = {(s.district_id, s.mois_calendaire): s
                       for s in SeuilAlerte.objects.all()}
         self.stdout.write(f"Seuils en cache : {len(seuils_map)}")
@@ -58,9 +70,13 @@ class Command(BaseCommand):
                 derniere_date = obs[-1].date
 
                 district_ok = False
-                for algo in ['RF', 'XGB']:
+                for algo in algos:
                     try:
-                        preds = predict_recursive(algo, district.nom, historic_df, horizons=[1, 2, 3])
+                        if algo == 'META':
+                            preds = predict('META', district.nom, historic_df, horizons=[1, 2, 3])
+                        else:
+                            preds = predict_recursive(algo, district.nom, historic_df,
+                                                       horizons=[1, 2, 3])
                     except Exception as exc:
                         self.stdout.write(self.style.WARNING(
                             f"  {district.nom_court} / {algo} : {exc}"
@@ -98,11 +114,13 @@ class Command(BaseCommand):
                     nb_districts_ok += 1
 
         self.stdout.write(self.style.SUCCESS(
-            f"\nPrevisions generees : {nb_total} entrees pour {nb_districts_ok} districts."
+            f"\nPrevisions generees : {nb_total} entrees pour {nb_districts_ok} districts "
+            f"({len(algos)} algos × 3 horizons)."
         ))
 
-        # Résumé par niveau (horizon 1, algo XGB par défaut)
-        nb_rouge = Prevision.objects.filter(algorithme='XGB', horizon=1, niveau_alerte='rouge').count()
-        nb_orange = Prevision.objects.filter(algorithme='XGB', horizon=1, niveau_alerte='orange').count()
-        nb_vert = Prevision.objects.filter(algorithme='XGB', horizon=1, niveau_alerte='vert').count()
-        self.stdout.write(f"\nRepartition XGB h=1 : rouge={nb_rouge}, orange={nb_orange}, vert={nb_vert}")
+        # Résumé par algo
+        for algo in algos:
+            r = Prevision.objects.filter(algorithme=algo, horizon=1, niveau_alerte='rouge').count()
+            o = Prevision.objects.filter(algorithme=algo, horizon=1, niveau_alerte='orange').count()
+            v = Prevision.objects.filter(algorithme=algo, horizon=1, niveau_alerte='vert').count()
+            self.stdout.write(f"  {algo} h=1 : rouge={r}, orange={o}, vert={v}")
