@@ -44,10 +44,13 @@ CSRF_TRUSTED_ORIGINS = [
 if _render_host:
     CSRF_TRUSTED_ORIGINS.append(f'https://{_render_host}')
 
-# --- Static (WhiteNoise compressé, tolérant aux fichiers manquants) ---
-# La version tolérante évite que toute l'app plante si un asset référencé via
-# {% static %} est absent (ex. favicon.png non fourni au build).
-STATICFILES_STORAGE = 'apps.core.storages.WhiteNoiseTolerantStorage'
+# --- Static (WhiteNoise compressé, SANS manifest pour robustesse maximale) ---
+# CompressedStaticFilesStorage compresse en gzip/brotli mais N'AJOUTE PAS
+# de hash aux noms de fichiers (pas de manifest). Conséquence :
+#   - Aucun risque de plantage sur un fichier référencé mais absent
+#   - URLs simples (/static/img/favicon.png au lieu de /static/img/favicon.abc123.png)
+#   - Cache HTTP géré par les headers WhiteNoise (Cache-Control: public, max-age=...)
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 # --- Sessions ---
 SESSION_COOKIE_HTTPONLY = True
