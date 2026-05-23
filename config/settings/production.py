@@ -44,8 +44,10 @@ CSRF_TRUSTED_ORIGINS = [
 if _render_host:
     CSRF_TRUSTED_ORIGINS.append(f'https://{_render_host}')
 
-# --- Static (WhiteNoise compressé) ---
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# --- Static (WhiteNoise compressé, tolérant aux fichiers manquants) ---
+# La version tolérante évite que toute l'app plante si un asset référencé via
+# {% static %} est absent (ex. favicon.png non fourni au build).
+STATICFILES_STORAGE = 'apps.core.storages.WhiteNoiseTolerantStorage'
 
 # --- Sessions ---
 SESSION_COOKIE_HTTPONLY = True
