@@ -13,7 +13,10 @@ whitenoise==6.7.0
 psycopg2-binary==2.9.9       # PostgreSQL (production)
 
 # --- Authentification ---
-bcrypt==4.2.0
+# bcrypt 4.0.1 = derniere version compatible Django 4.2 BCryptSHA256PasswordHasher.
+# A partir de 4.1.0, bcrypt a retire l'attribut __author__ que Django utilise
+# pour valider le module. Bug : ImportError: cannot import name '__author__'.
+bcrypt==4.0.1
 django-bcrypt==0.9.2
 
 # --- Données & ML (compatibilité avec les .pkl du notebook) ---
