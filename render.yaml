@@ -8,7 +8,8 @@ services:
     runtime: python
     region: frankfurt          # Europe (latence raisonnable depuis le Cameroun)
     plan: free
-    pythonVersion: "3.12"
+    # Note : la version Python se déclare via PYTHON_VERSION ci-dessous
+    # (pas via 'pythonVersion' qui n'est pas un champ valide pour les services).
     buildCommand: "./build.sh"
     # 1 seul worker : les modèles ML (RF + XGB) sont déjà chargés en RAM (~50 Mo)
     # et seraient dupliqués par worker, ce qui dépasse la limite free 512 Mo.
