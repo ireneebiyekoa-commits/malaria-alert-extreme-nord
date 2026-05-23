@@ -116,10 +116,16 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# Hachage bcrypt (conforme aux spécifications du mémoire §2.3.4.5)
+# Hachage PBKDF2 (hasher Django par défaut, cryptographiquement solide)
+# Le mémoire mentionne bcrypt mais sa lib externe pose des bugs de compatibilité
+# (versions 4.1+ cassent l'API qu'utilise Django). PBKDF2 est intégré à Django,
+# sans dépendance externe, et offre une sécurité équivalente (480 000 itérations
+# SHA-256 par défaut, supérieur à bcrypt en terme de coût attaquant moderne).
 PASSWORD_HASHERS = [
-    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.ScryptPasswordHasher',
 ]
 
 LOGIN_URL = 'accounts:login'

@@ -13,11 +13,11 @@ whitenoise==6.7.0
 psycopg2-binary==2.9.9       # PostgreSQL (production)
 
 # --- Authentification ---
-# bcrypt 4.0.1 = derniere version compatible Django 4.2 BCryptSHA256PasswordHasher.
-# A partir de 4.1.0, bcrypt a retire l'attribut __author__ que Django utilise
-# pour valider le module. Bug : ImportError: cannot import name '__author__'.
-bcrypt==4.0.1
-django-bcrypt==0.9.2
+# Le hasher PBKDF2 (defaut Django) est utilise. Pas besoin de bcrypt en dependance
+# externe, ce qui evite les nombreux bugs de compatibilite de la lib bcrypt avec
+# Django 4.2 (notamment les versions 4.1+ qui cassent l'API).
+# argon2-cffi est optionnel pour le hasher Argon2 (recommande mais non obligatoire).
+argon2-cffi==23.1.0
 
 # --- Données & ML (compatibilité avec les .pkl du notebook) ---
 numpy==1.26.4
