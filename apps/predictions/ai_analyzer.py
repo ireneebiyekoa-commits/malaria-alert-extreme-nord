@@ -233,35 +233,29 @@ def _construire_prompt(
             f"R² = {metriques.get('r2', 0):.3f}."
         )
 
-    return f"""Tu es un expert en épidémiologie du paludisme dans la région de l'Extrême-Nord du Cameroun.
-Analyse les prévisions d'incidence palustre suivantes pour le {district}.
+    return f"""Analyse les prévisions d'incidence palustre suivantes pour le {district}, dans la région de l'Extrême-Nord du Cameroun. Système d'alerte précoce, algorithme {algorithme}, validé sur 2017-2025.
 
-Contexte : Le système d'alerte précoce s'appuie sur l'algorithme {algorithme} validé sur la période 2017-2025.
-Quand l'algorithme est « Méta-modèle adaptatif », le système utilise un Ridge stacking RF + XGBoost à l'horizon 1 mois (le plus précis selon le test de Diebold-Mariano), puis bascule sur XGBoost récursif aux horizons 2 et 3 mois (le stacking devient contre-productif aux horizons longs).
+Contexte technique (à NE PAS répéter dans la réponse) : seuil d'alerte = moyenne + 1σ ; seuil épidémiologique = moyenne + 2σ ; niveaux VERT, ORANGE, ROUGE.
 
-Les seuils d'alerte sont définis selon la **méthode des écarts-types** (recommandation OMS), calculés par district et par mois calendaire à partir de l'historique :
-- **Seuil d'alerte** = Moyenne historique + 1 × Écart-type
-- **Seuil épidémiologique** = Moyenne historique + 2 × Écarts-types
-
-Classification des niveaux :
-- VERT (Normal)    : incidence prédite < seuil d'alerte
-- ORANGE (Élevé)   : seuil d'alerte ≤ incidence prédite < seuil épidémiologique
-- ROUGE (Critique) : incidence prédite ≥ seuil épidémiologique (épidémie probable)
-
-Prévisions générées :
+Prévisions :
 {prev_txt}
 
 {hist_txt}
 
 {metr_txt}
 
-Fournis une analyse structurée en français en 3 paragraphes clairs et concis (200 mots maximum au total) :
-
-1. **Interprétation des prévisions** : que signifient ces niveaux pour le district ? Réfère-toi explicitement aux seuils d'alerte et épidémiologique.
-2. **Tendance** : la situation s'aggrave-t-elle, s'améliore-t-elle, ou reste-t-elle stable par rapport aux 6 derniers mois ?
-3. **Recommandations opérationnelles** : actions concrètes que peut entreprendre le GTR Paludisme de l'Extrême-Nord (mobilisation des CPS, distribution de moustiquaires, renforcement diagnostique, surveillance entomologique, etc.).
-
-Sois précis, professionnel et factuel. Évite les généralités. Adresse-toi à un décideur de santé publique."""
+CONSIGNES DE REDACTION STRICTES :
+- Va DIRECTEMENT à l'analyse, sans formule d'introduction (interdits : "Voici", "En tant que", "Monsieur le décideur", "Madame", "Cher", "Bonjour", "Cette analyse...", etc.).
+- N'utilise AUCUN emoji ni caractère Unicode décoratif (interdits : 🔴 🟠 🟢 ⚠️ ✅ ❌ 📊 🎯 ☑ ●, etc.). Utilise uniquement du texte pur.
+- Ne te présente pas. Ne mentionne pas que tu es une IA.
+- Pas de tutoiement, pas de phrases conviviales.
+- Structure obligatoire en 3 sections courtes, chacune introduite par son titre en gras Markdown :
+  **Interprétation** — Lecture des niveaux d'alerte pour les 3 horizons.
+  **Tendance** — Comparaison avec les 6 derniers mois observés.
+  **Recommandations** — Actions opérationnelles concrètes (CPS, MILDA, TDR/ACT, surveillance entomologique, communication communautaire).
+- Maximum 180 mots au TOTAL.
+- Cite les chiffres exacts du contexte (incidences, seuils) sans les arrondir.
+- Style : factuel, précis, opérationnel, ton de note de service de santé publique."""
 
 
 def _analyse_locale_fallback(
@@ -277,16 +271,16 @@ def _analyse_locale_fallback(
     nb_orange = sum(1 for n in niveaux if n == 'orange')
 
     if nb_rouge >= 2:
-        diag = "🔴 **Situation critique** : plusieurs horizons en alerte rouge."
+        diag = "**Situation critique** : plusieurs horizons en alerte rouge."
         reco = ("Mobilisation immédiate des équipes du district. Renforcement de la chimioprévention "
                 "saisonnière (CPS), pré-positionnement des intrants antipaludiques (TDR, ACT), "
                 "intensification de la surveillance entomologique et communication communautaire.")
     elif nb_rouge == 1 or nb_orange >= 2:
-        diag = "🟠 **Situation à surveiller** : alerte élevée détectée sur au moins un horizon."
+        diag = "**Situation à surveiller** : alerte élevée détectée sur au moins un horizon."
         reco = ("Activation des protocoles d'alerte précoce. Vérification des stocks de moustiquaires "
                 "imprégnées et de tests diagnostiques rapides. Sensibilisation accrue dans les zones à risque.")
     else:
-        diag = "🟢 **Situation normale** : incidence prédite sous les seuils d'alerte."
+        diag = "**Situation normale** : incidence prédite sous les seuils d'alerte."
         reco = ("Poursuite des activités courantes de prévention et de surveillance. "
                 "Maintien de la vigilance saisonnière, en particulier en période de transmission élevée.")
 
@@ -306,13 +300,9 @@ def _analyse_locale_fallback(
                     f"(RMSE = {metriques.get('rmse', 0):.2f}) confirment la fiabilité de la prévision.")
 
     analyse = (
-        f"### Analyse du {district}\n\n"
-        f"**1. Interprétation** : {diag} Sur les trois horizons de prévision, "
-        f"{nb_rouge} mois sont en niveau rouge et {nb_orange} en orange.\n\n"
-        f"**2. Tendance** : L'évolution récente de l'incidence est **{tendance}** "
-        f"sur les six derniers mois observés.{metr_str}\n\n"
-        f"**3. Recommandations** : {reco}\n\n"
-        f"*(Analyse générée en mode dégradé — service IA non disponible)*"
+        f"**Interprétation** — {diag} Sur les trois horizons, {nb_rouge} mois en rouge et {nb_orange} en orange.\n\n"
+        f"**Tendance** — L'évolution récente de l'incidence est **{tendance}** sur les six derniers mois observés.{metr_str}\n\n"
+        f"**Recommandations** — {reco}"
     )
 
     return {

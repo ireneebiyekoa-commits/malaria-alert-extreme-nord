@@ -22,9 +22,12 @@ argon2-cffi==23.1.0
 # --- Données & ML (compatibilité avec les .pkl du notebook) ---
 numpy==1.26.4
 pandas==2.2.3
-scikit-learn==1.5.2
-xgboost==2.0.3              # NE PAS upgrader : 2.1+ embarque nvidia-nccl-cu12 (300 Mo !)
-joblib==1.4.2
+# scikit-learn et xgboost : versions IDENTIQUES a celles qui ont entraine les
+# modeles (.pkl dans outputs/models/). Sinon le format binaire interne diffère
+# et les predictions deviennent silencieusement nulles ou aberrantes.
+scikit-learn==1.8.0
+xgboost==3.2.0              # version d'entrainement du notebook (booster 3.2.0)
+joblib==1.5.3
 scipy==1.14.1
 
 # --- Lecture / écriture fichiers ---

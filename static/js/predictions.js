@@ -19,9 +19,9 @@
     let currentData = null;
 
     const NIVEAU_BADGE = {
-        vert: '<span class="badge badge-vert">🟢 Normal</span>',
-        orange: '<span class="badge badge-orange">🟠 Élevé</span>',
-        rouge: '<span class="badge badge-rouge">🔴 Critique</span>',
+        vert:   '<span class="badge badge-vert"><i class="fa-solid fa-circle-check"></i> Normal</span>',
+        orange: '<span class="badge badge-orange"><i class="fa-solid fa-circle-exclamation"></i> Élevé</span>',
+        rouge:  '<span class="badge badge-rouge"><i class="fa-solid fa-triangle-exclamation"></i> Critique</span>',
     };
 
     const NIVEAU_COLOR = {
@@ -73,7 +73,7 @@
             })
             .finally(() => {
                 btnPredict.disabled = false;
-                btnPredict.innerHTML = '🔮 Générer les prévisions';
+                btnPredict.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Générer les prévisions';
             });
     }
 
@@ -430,9 +430,9 @@
                 }, 200);
 
                 // Feedback visuel
-                btnExportWord.innerHTML = '✓ Téléchargé';
+                btnExportWord.innerHTML = '<i class="fa-solid fa-check"></i> Téléchargé';
                 setTimeout(() => {
-                    btnExportWord.innerHTML = '📝 Rapport Word';
+                    btnExportWord.innerHTML = '<i class="fa-solid fa-file-word"></i> Rapport Word';
                     btnExportWord.disabled = false;
                 }, 2000);
                 return;
@@ -442,7 +442,7 @@
             } finally {
                 if (btnExportWord.disabled && !btnExportWord.innerHTML.includes('Téléchargé')) {
                     btnExportWord.disabled = false;
-                    btnExportWord.innerHTML = '📝 Rapport Word';
+                    btnExportWord.innerHTML = '<i class="fa-solid fa-file-word"></i> Rapport Word';
                 }
             }
         });

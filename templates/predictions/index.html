@@ -17,7 +17,7 @@
 <div class="container">
     {% if not ml_ready %}
     <div class="message message-warning">
-        ⚠️ <strong>Modèles ML non chargés.</strong>
+        <i class="fa-solid fa-triangle-exclamation"></i> <strong>Modèles ML non chargés.</strong>
         Vérifiez que le dossier <code>outputs/models/</code> contient bien
         <code>random_forest_final.pkl</code>, <code>xgboost_final.pkl</code> et <code>artefacts.pkl</code>.
         {% if ml_status.errors %}
@@ -56,7 +56,7 @@
                 </select>
             </div>
             <div>
-                <button id="btn-predict" class="btn btn-primary">🔮 Générer les prévisions</button>
+                <button id="btn-predict" class="btn btn-primary"><i class="fa-solid fa-wand-magic-sparkles"></i> Générer les prévisions</button>
             </div>
         </div>
     </div>
@@ -65,7 +65,7 @@
     <div class="dashboard-grid-full">
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">📈 Courbe de prévision (12 derniers mois observés + horizons prédits)</h3>
+                <h3 class="card-title"><i class="fa-solid fa-chart-line"></i> Courbe de prévision (12 derniers mois observés + horizons prédits)</h3>
                 <span id="predict-info" class="text-muted" style="font-size: 0.85rem;"></span>
             </div>
             <div class="card-body chart-body">
@@ -80,12 +80,12 @@
     <div class="dashboard-grid">
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">📋 Valeurs prévisionnelles</h3>
+                <h3 class="card-title"><i class="fa-solid fa-table-list"></i> Valeurs prévisionnelles</h3>
                 <div class="d-flex gap-2">
-                    <button id="btn-export-excel" class="btn btn-sm btn-outline" title="Excel du district affiché">⬇ Excel</button>
-                    <a href="{% url 'predictions:api_export_excel_global' %}" class="btn btn-sm btn-success" title="Excel pour TOUS les districts (multi-feuilles)">⬇ Excel global</a>
+                    <button id="btn-export-excel" class="btn btn-sm btn-outline" title="Excel du district affiché"><i class="fa-solid fa-file-excel"></i> Excel</button>
+                    <a href="{% url 'predictions:api_export_excel_global' %}" class="btn btn-sm btn-success" title="Excel pour TOUS les districts (multi-feuilles)"><i class="fa-solid fa-file-excel"></i> Excel global</a>
                     {% if user.is_admin %}
-                    <button id="btn-export-word" class="btn btn-sm btn-yellow">📝 Rapport Word</button>
+                    <button id="btn-export-word" class="btn btn-sm btn-yellow"><i class="fa-solid fa-file-word"></i> Rapport Word</button>
                     {% endif %}
                 </div>
             </div>
@@ -115,7 +115,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">🎯 Performance du modèle</h3>
+                <h3 class="card-title"><i class="fa-solid fa-bullseye"></i> Performance du modèle</h3>
                 <span class="text-muted" style="font-size: 0.78rem;">Validation walk-forward (5 plis, 32 districts)</span>
             </div>
             <div class="card-body">
@@ -146,13 +146,13 @@
     <div class="dashboard-grid-full">
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">🤖 Analyse IA — Interprétation et recommandations</h3>
+                <h3 class="card-title"><i class="fa-solid fa-brain"></i> Analyse — Interprétation et recommandations</h3>
                 <button id="btn-analyse-ia" class="btn btn-sm btn-primary" disabled>Générer l'analyse</button>
             </div>
             <div class="card-body">
                 <div id="ai-result" class="ai-box" style="display: none;">
                     <div class="ai-header">
-                        <span>🧠</span> Analyse générée par <span id="ai-source">Gemini</span>
+                        <i class="fa-solid fa-brain"></i> Analyse interprétative
                     </div>
                     <div class="ai-content" id="ai-content"></div>
                 </div>

@@ -60,7 +60,7 @@
                             </select>
                         </div>
                         <div>
-                            <button type="submit" class="btn btn-yellow">⬇ Télécharger le template</button>
+                            <button type="submit" class="btn btn-yellow"><i class="fa-solid fa-file-arrow-down"></i> Télécharger le template</button>
                         </div>
                     </div>
                 </form>
@@ -93,7 +93,7 @@
                         <label class="form-label">Fichier Excel (.xlsx)</label>
                         <input type="file" name="fichier_excel" accept=".xlsx" required class="form-input">
                     </div>
-                    <button type="submit" class="btn btn-primary">📥 Importer et recalculer</button>
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-cloud-arrow-up"></i> Importer et recalculer</button>
                 </form>
             </div>
         </div>
@@ -102,7 +102,7 @@
     <!-- Journal des imports -->
     <div class="card mt-5">
         <div class="card-header">
-            <h3 class="card-title">📓 Journal des imports récents</h3>
+            <h3 class="card-title"><i class="fa-solid fa-clipboard-list"></i> Journal des imports récents</h3>
         </div>
         <div class="card-body">
             {% if derniers_imports %}

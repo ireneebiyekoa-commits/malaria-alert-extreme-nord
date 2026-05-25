@@ -10,6 +10,11 @@
     <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}">
     <link rel="stylesheet" href="{% static 'css/design-system.css' %}">
 
+    <!-- Font Awesome 6 (icones professionnelles) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+          integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+          crossorigin="anonymous" referrerpolicy="no-referrer">
+
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
@@ -26,15 +31,15 @@
 <div class="topbar">
     <div class="container">
         <div class="topbar-left">
-            <span>🇨🇲 République du Cameroun — Paix · Travail · Patrie</span>
+            <span><i class="fa-solid fa-flag"></i> République du Cameroun — Paix · Travail · Patrie</span>
         </div>
         <div class="topbar-right">
-            <a href="{% url 'about:index' %}">À propos</a>
-            <a href="{% url 'about:guide' %}">Guide</a>
+            <a href="{% url 'about:index' %}"><i class="fa-solid fa-circle-info"></i> À propos</a>
+            <a href="{% url 'about:guide' %}"><i class="fa-solid fa-book"></i> Guide</a>
             {% if user.is_authenticated %}
-                <a href="{% url 'accounts:logout' %}">Déconnexion</a>
+                <a href="{% url 'accounts:logout' %}"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</a>
             {% else %}
-                <a href="{% url 'accounts:login' %}">Se connecter</a>
+                <a href="{% url 'accounts:login' %}"><i class="fa-solid fa-right-to-bracket"></i> Se connecter</a>
             {% endif %}
         </div>
     </div>
@@ -61,34 +66,34 @@
         <ul class="nav-list">
             <li class="nav-item">
                 <a href="{% url 'dashboard:index' %}" class="nav-link {% if request.resolver_match.namespace == 'dashboard' %}active{% endif %}">
-                    <span class="nav-icon">📊</span>Tableau de bord
+                    <i class="fa-solid fa-gauge-high nav-icon"></i>Tableau de bord
                 </a>
             </li>
             <li class="nav-item">
                 <a href="{% url 'predictions:index' %}" class="nav-link {% if request.resolver_match.namespace == 'predictions' %}active{% endif %}">
-                    <span class="nav-icon">📈</span>Prévisions
+                    <i class="fa-solid fa-chart-line nav-icon"></i>Prévisions
                 </a>
             </li>
             <li class="nav-item">
                 <a href="{% url 'alerts:index' %}" class="nav-link {% if request.resolver_match.namespace == 'alerts' %}active{% endif %}">
-                    <span class="nav-icon">🗺️</span>Carte d'alerte
+                    <i class="fa-solid fa-map-location-dot nav-icon"></i>Carte d'alerte
                 </a>
             </li>
             {% if user.is_admin %}
             <li class="nav-item">
                 <a href="{% url 'data_management:index' %}" class="nav-link {% if request.resolver_match.namespace == 'data_management' %}active{% endif %}">
-                    <span class="nav-icon">📥</span>Mise à jour
+                    <i class="fa-solid fa-cloud-arrow-up nav-icon"></i>Mise à jour
                 </a>
             </li>
             {% endif %}
             <li class="nav-item">
                 <a href="{% url 'about:index' %}" class="nav-link {% if request.resolver_match.namespace == 'about' %}active{% endif %}">
-                    <span class="nav-icon">ℹ️</span>À propos
+                    <i class="fa-solid fa-circle-info nav-icon"></i>À propos
                 </a>
             </li>
 
             <li class="nav-user">
-                <span>👤 {{ user.get_full_name|default:user.username }}</span>
+                <span><i class="fa-solid fa-user-circle"></i> {{ user.get_full_name|default:user.username }}</span>
                 <span class="user-role-badge">{{ user.get_role_display }}</span>
             </li>
         </ul>
@@ -115,7 +120,7 @@
 {% if user.is_authenticated %}
 <!-- ================== Chatbot analytique flottant ================== -->
 <button id="chat-fab" class="chat-fab" type="button" aria-label="Ouvrir l'assistant analytique" title="Assistant analytique">
-    💬
+    <i class="fa-solid fa-comments"></i>
 </button>
 
 <aside id="chat-panel" class="chat-panel" aria-hidden="true">

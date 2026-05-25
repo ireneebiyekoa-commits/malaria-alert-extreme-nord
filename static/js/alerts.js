@@ -18,9 +18,9 @@
     };
 
     const LABEL = {
-        vert: '🟢 Normal',
-        orange: '🟠 Élevé',
-        rouge: '🔴 Critique',
+        vert:   '<i class="fa-solid fa-circle-check" style="color:#28a745;"></i> Normal',
+        orange: '<i class="fa-solid fa-circle-exclamation" style="color:#fd7e14;"></i> Élevé',
+        rouge:  '<i class="fa-solid fa-triangle-exclamation" style="color:#dc3545;"></i> Critique',
     };
 
     function initMap() {
@@ -96,7 +96,7 @@
             .catch(err => alert('Erreur : ' + err.message))
             .finally(() => {
                 btn.disabled = false;
-                btn.innerHTML = '🔄 Actualiser';
+                btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Actualiser';
             });
     }
 
@@ -228,9 +228,9 @@
         if (elMon && data.alertes.length > 0) {
             const a = data.alertes[0];
             const labels = {
-                vert: '🟢 NORMAL',
-                orange: '🟠 ÉLEVÉ',
-                rouge: '🔴 CRITIQUE',
+                vert:   '<i class="fa-solid fa-circle-check"></i> NORMAL',
+                orange: '<i class="fa-solid fa-circle-exclamation"></i> ÉLEVÉ',
+                rouge:  '<i class="fa-solid fa-triangle-exclamation"></i> CRITIQUE',
             };
             elMon.textContent = labels[a.niveau] || a.niveau.toUpperCase();
             elMon.style.color = COLOR[a.niveau];

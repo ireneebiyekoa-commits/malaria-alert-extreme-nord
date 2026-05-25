@@ -16,6 +16,7 @@ Features attendues :
   - Méta-modèle Ridge       : 6 features [pred_rf, pred_xgb, pred_diff,
                                           mois_sin, mois_cos, inc_lag1_orig]
 """
+import logging
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -23,6 +24,8 @@ import pandas as pd
 
 from .ml_loader import (get_artefacts, get_climatologie, get_meta_ridge,
                         get_model, is_meta_available)
+
+logger = logging.getLogger(__name__)
 
 # Algorithmes supportés
 ALGO_RF = 'RF'
@@ -161,9 +164,17 @@ def predict_recursive(
         )
         try:
             pred = float(model.predict(X_df)[0])
-        except Exception:
-            same_month = df[df['mois'] == int(target_date.month)]
-            pred = float(same_month['incidence'].mean()) if not same_month.empty else 0.0
+        except Exception as exc:
+            # Log explicite : on doit voir l'erreur dans les logs Render,
+            # pas un fallback silencieux à 0.
+            logger.error(
+                f"PREDICTION ECHEC : algo={algo} district={district_nom} "
+                f"h={h} target={target_date.date()} : {type(exc).__name__}: {exc}"
+            )
+            # Propager l'exception pour qu'elle remonte à l'appelant
+            # (la vue API renverra alors un HTTP 500 explicite plutôt qu'une valeur 0
+            #  qui pourrait masquer le bug).
+            raise
 
         pred = max(0.0, pred)
         results[h] = {
