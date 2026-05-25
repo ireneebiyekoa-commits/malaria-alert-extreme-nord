@@ -89,23 +89,23 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="card-body">
-                <div class="table-container">
-                    <table class="table table-compact" id="table-previsions">
+            <div class="card-body" style="padding: var(--space-3);">
+                <div class="table-container" style="overflow-x: auto; max-width: 100%;">
+                    <table class="table table-compact" id="table-previsions" style="min-width: 640px; font-size: 0.84rem;">
                         <thead>
                             <tr>
-                                <th>Horizon</th>
-                                <th>Date cible</th>
-                                <th>Incidence prédite</th>
+                                <th style="white-space:nowrap;">Horizon</th>
+                                <th style="white-space:nowrap;">Date cible</th>
+                                <th>Incidence</th>
                                 <th>Cas attendus</th>
-                                <th title="Moyenne + 1 écart-type">Seuil d'alerte</th>
-                                <th title="Moyenne + 2 écarts-types">Seuil épidémiologique</th>
+                                <th title="Moyenne + 1 écart-type">Seuil alerte</th>
+                                <th title="Moyenne + 2 écarts-types">Seuil épidémio.</th>
                                 <th>Niveau</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td colspan="7" class="text-center text-muted">
-                                Sélectionnez un district et cliquez sur « Générer les prévisions ».
+                            <tr><td colspan="7" class="text-center text-muted" style="padding: var(--space-4);">
+                                Sélectionnez un district pour générer les prévisions.
                             </td></tr>
                         </tbody>
                     </table>

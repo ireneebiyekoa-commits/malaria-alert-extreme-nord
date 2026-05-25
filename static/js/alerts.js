@@ -112,11 +112,17 @@
             style: function (feature) {
                 const nom = feature.properties.district_nom;
                 const a = alertesMap[nom];
+                const niveau = a ? a.niveau : null;
+                // Class CSS pour le clignotement des alertes (orange + rouge)
+                let className = '';
+                if (niveau === 'rouge') className = 'alert-pulse-rouge';
+                else if (niveau === 'orange') className = 'alert-pulse-orange';
                 return {
                     fillColor: a ? COLOR[a.niveau] : '#e0e0e0',
                     weight: 1.5,
                     color: '#333',
                     fillOpacity: 0.82,
+                    className: className,
                 };
             },
             onEachFeature: function (feature, layer) {

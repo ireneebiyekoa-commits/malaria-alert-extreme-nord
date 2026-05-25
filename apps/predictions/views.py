@@ -109,7 +109,9 @@ def api_prevision(request):
         else:
             preds = predict_recursive(algo_code, district.nom, historic_df, horizons=horizons)
         result = []
-        for h, p in preds.items():
+        # Tri par horizon ascendant pour garantir l'ordre chronologique
+        for h in sorted(preds.keys()):
+            p = preds[h]
             seuil = seuils.get(p['mois_cible'])
             niveau = 'vert'
             s_alerte = seuil.seuil_alerte if seuil else 0

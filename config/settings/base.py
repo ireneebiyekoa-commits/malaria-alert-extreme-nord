@@ -164,7 +164,9 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10 MB
 # IA GÉNÉRATIVE — GOOGLE GEMINI
 # ============================================================
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
-GEMINI_MODEL = config('GEMINI_MODEL', default='gemini-2.5-flash')
+# Modèle par défaut : gemini-1.5-flash (1500 req/jour gratuit, stable).
+# Alternatives : 'gemini-2.5-flash' (20 req/jour seulement) ou 'gemini-2.0-flash'.
+GEMINI_MODEL = config('GEMINI_MODEL', default='gemini-1.5-flash')
 GEMINI_ENABLED = bool(GEMINI_API_KEY)
 
 # ============================================================

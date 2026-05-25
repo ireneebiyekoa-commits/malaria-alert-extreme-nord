@@ -64,12 +64,54 @@ def _get_model_name() -> str:
             return m
     except Exception:
         pass
-    return os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash').strip()
+    return os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash').strip()
 
 
 # ============================================================
 # Appel REST Gemini
 # ============================================================
+# Modèles tentés dans l'ordre si le primaire échoue (rate limit, indispo, etc.)
+_GEMINI_FALLBACK_MODELS = [
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-flash-8b',
+    'gemini-2.0-flash',
+    'gemini-pro',
+]
+
+
+def _try_one_call(api_key: str, model: str, payload: dict, timeout: int) -> str:
+    """Appel à un modèle Gemini précis. Lève RuntimeError sur échec."""
+    url = _GEMINI_ENDPOINT.format(model=model, api_key=api_key)
+    try:
+        resp = requests.post(url, json=payload, timeout=timeout)
+    except requests.exceptions.RequestException as exc:
+        raise RuntimeError(f"réseau : {exc}") from exc
+
+    if resp.status_code == 429:
+        raise RuntimeError(f"quota dépassé (modèle {model})")
+    if resp.status_code == 404:
+        raise RuntimeError(f"modèle {model} indisponible (404)")
+    if resp.status_code != 200:
+        raise RuntimeError(f"HTTP {resp.status_code} : {resp.text[:200]}")
+
+    try:
+        data = resp.json()
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"JSON invalide : {exc}") from exc
+
+    candidates = data.get('candidates', [])
+    if not candidates:
+        raise RuntimeError(f"aucun candidate (modèle {model})")
+
+    parts = candidates[0].get('content', {}).get('parts', [])
+    text_parts = [p.get('text', '') for p in parts if p.get('text')]
+    if not text_parts:
+        raise RuntimeError(f"réponse vide (modèle {model})")
+
+    return ''.join(text_parts).strip()
+
+
 def call_gemini_rest(
     user_message: str,
     system_prompt: Optional[str] = None,
@@ -77,16 +119,15 @@ def call_gemini_rest(
     timeout: int = 30,
 ) -> str:
     """
-    Appelle l'API REST de Gemini et retourne le texte de réponse.
+    Appelle l'API REST de Gemini avec fallback automatique entre modèles.
 
-    Args:
-        user_message: question / consigne courante
-        system_prompt: instructions système (rôle, contraintes)
-        history: [{'role': 'user' | 'assistant', 'content': '...'}, ...]
-        timeout: timeout HTTP en secondes
+    Si le modèle primaire (settings.GEMINI_MODEL) échoue (rate limit, 404, etc.),
+    on essaie les modèles de _GEMINI_FALLBACK_MODELS dans l'ordre. Cela permet
+    à l'assistant de rester opérationnel même si Google met à jour ses modèles
+    ou si un quota est dépassé.
 
     Raises:
-        RuntimeError: si la clé est absente, l'appel échoue ou la réponse est vide.
+        RuntimeError: si TOUS les modèles ont échoué.
     """
     global _GEMINI_INIT_ERROR
 
@@ -95,8 +136,10 @@ def call_gemini_rest(
         _GEMINI_INIT_ERROR = "Clé API Gemini non configurée"
         raise RuntimeError(_GEMINI_INIT_ERROR)
 
-    model = _get_model_name()
-    url = _GEMINI_ENDPOINT.format(model=model, api_key=api_key)
+    primary_model = _get_model_name()
+    # Liste de modèles à essayer : primary d'abord, puis les fallbacks (sans doublon)
+    models_to_try = [primary_model] + [m for m in _GEMINI_FALLBACK_MODELS
+                                        if m != primary_model]
 
     # Construction du payload
     contents: List[Dict[str, Any]] = []
@@ -105,41 +148,28 @@ def call_gemini_rest(
         content = (msg.get('content') or '').strip()
         if content:
             contents.append({'role': role, 'parts': [{'text': content}]})
-
-    # Question courante
     contents.append({'role': 'user', 'parts': [{'text': user_message}]})
 
     payload: Dict[str, Any] = {'contents': contents}
     if system_prompt:
         payload['systemInstruction'] = {'parts': [{'text': system_prompt}]}
 
-    try:
-        resp = requests.post(url, json=payload, timeout=timeout)
-    except requests.exceptions.RequestException as exc:
-        raise RuntimeError(f"Erreur réseau Gemini : {exc}") from exc
+    errors = []
+    for model in models_to_try:
+        try:
+            text = _try_one_call(api_key, model, payload, timeout)
+            if model != primary_model:
+                logger.info(f"Gemini : fallback réussi sur le modèle {model} (primaire {primary_model} indispo)")
+            return text
+        except RuntimeError as exc:
+            errors.append(f"{model} : {exc}")
+            logger.warning(f"Gemini {model} a échoué : {exc}")
+            continue
 
-    if resp.status_code == 429:
-        raise RuntimeError("Quota Gemini dépassé (limite gratuite atteinte).")
-    if resp.status_code != 200:
-        raise RuntimeError(
-            f"Gemini HTTP {resp.status_code} : {resp.text[:200]}"
-        )
-
-    try:
-        data = resp.json()
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(f"Réponse Gemini invalide : {exc}") from exc
-
-    candidates = data.get('candidates', [])
-    if not candidates:
-        raise RuntimeError(f"Aucune réponse du modèle : {data}")
-
-    parts = candidates[0].get('content', {}).get('parts', [])
-    text_parts = [p.get('text', '') for p in parts if p.get('text')]
-    if not text_parts:
-        raise RuntimeError(f"Réponse vide du modèle : {candidates[0]}")
-
-    return ''.join(text_parts).strip()
+    # Tous les modèles ont échoué
+    raise RuntimeError(
+        f"Tous les modèles Gemini ont échoué. Détails : {' | '.join(errors)}"
+    )
 
 
 # ============================================================

@@ -293,7 +293,9 @@ def predict_adaptive(
         if meta is not None:
             results[1] = {**meta, 'source': 'Méta-modèle Ridge'}
 
-    return results
+    # Important : on retourne un dict trié par horizon ASCENDANT (1, 2, 3)
+    # pour que la chronologie soit correcte dans le graphique côté front.
+    return dict(sorted(results.items()))
 
 
 # ============================================================

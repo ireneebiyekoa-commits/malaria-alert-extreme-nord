@@ -178,6 +178,34 @@ img { max-width: 100%; height: auto; }
 .leaflet-bottom.leaflet-left,
 .leaflet-bottom.leaflet-right { z-index: 800 !important; }
 
+/* ============================================================
+   Clignotement des districts en alerte (carte Leaflet SVG)
+   - orange : pulsation moyenne (1.8s)
+   - rouge : pulsation rapide et marquée (1.2s)
+   ============================================================ */
+@keyframes pulse-alert-orange {
+    0%   { fill-opacity: 0.75; stroke-width: 1.5; stroke: #333; }
+    50%  { fill-opacity: 1.00; stroke-width: 4;   stroke: #fd7e14; }
+    100% { fill-opacity: 0.75; stroke-width: 1.5; stroke: #333; }
+}
+@keyframes pulse-alert-rouge {
+    0%   { fill-opacity: 0.80; stroke-width: 1.5; stroke: #333; }
+    50%  { fill-opacity: 1.00; stroke-width: 5;   stroke: #ff1a3c; }
+    100% { fill-opacity: 0.80; stroke-width: 1.5; stroke: #333; }
+}
+
+.alert-pulse-orange {
+    animation: pulse-alert-orange 1.8s ease-in-out infinite;
+}
+.alert-pulse-rouge {
+    animation: pulse-alert-rouge 1.2s ease-in-out infinite;
+}
+
+/* Désactiver l'animation pour les utilisateurs qui préfèrent moins de mouvement */
+@media (prefers-reduced-motion: reduce) {
+    .alert-pulse-orange, .alert-pulse-rouge { animation: none; }
+}
+
 /* Labels permanents sur les districts (tooltips Leaflet) */
 .district-label {
     background: transparent !important;
