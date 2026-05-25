@@ -309,10 +309,17 @@
         })
             .then(r => r.json())
             .then(data => {
-                $('#ai-placeholder').style.display = 'none';
-                $('#ai-result').style.display = 'block';
-                $('#ai-source').textContent = data.source === 'gemini' ? 'Google Gemini' : 'analyse locale';
-                $('#ai-content').innerHTML = formatAnalyse(data.analyse);
+                // Récupère les éléments en sécurité (peuvent être absents du template)
+                const placeholder = document.getElementById('ai-placeholder');
+                const result = document.getElementById('ai-result');
+                const source = document.getElementById('ai-source');
+                const content = document.getElementById('ai-content');
+
+                if (placeholder) placeholder.style.display = 'none';
+                if (result) result.style.display = 'block';
+                if (source) source.textContent = data.source === 'gemini' ? 'Google Gemini' : 'analyse locale';
+                if (content) content.innerHTML = formatAnalyse(data.analyse || '');
+
                 currentData.analyse_ia = data.analyse;
             })
             .catch(err => {

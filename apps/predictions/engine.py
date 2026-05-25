@@ -27,6 +27,13 @@ from .ml_loader import (get_artefacts, get_climatologie, get_meta_ridge,
 
 logger = logging.getLogger(__name__)
 
+# Plancher numérique pour les prévisions.
+# Si le modèle prédit une valeur ≤ 0 (cas plausible pour districts à très
+# faible transmission), on garde une valeur infinitésimale plutôt que 0
+# strict. Cela évite la propagation cascade « 0 → 0 → 0 » via les lags
+# récursifs aux horizons 2 et 3.
+_MIN_INCIDENCE = 0.01
+
 # Algorithmes supportés
 ALGO_RF = 'RF'
 ALGO_XGB = 'XGB'
@@ -176,13 +183,25 @@ def predict_recursive(
             #  qui pourrait masquer le bug).
             raise
 
-        pred = max(0.0, pred)
+        # Plancher à _MIN_INCIDENCE (0.01) pour éviter la cascade « 0 → 0 → 0 »
+        # via les lags récursifs aux horizons suivants. Si XGB prédit une valeur
+        # négative (cas plausible pour districts à très faible transmission), on
+        # log un warning pour traçabilité, puis on applique le plancher.
+        pred_brute = pred
+        if pred <= 0:
+            logger.warning(
+                f"Prediction <=0 plancher applique : algo={algo} district={district_nom} "
+                f"h={h} target={target_date.date()} brute={pred_brute:.4f} -> {_MIN_INCIDENCE}"
+            )
+        pred = max(_MIN_INCIDENCE, pred)
+
         results[h] = {
             'horizon': h,
             'date_cible': target_date.date(),
             'mois_cible': int(target_date.month),
             'annee_cible': int(target_date.year),
             'incidence': round(pred, 3),
+            'incidence_brute': round(pred_brute, 4),
         }
 
         # Mise à jour des buffers pour h+1
@@ -256,11 +275,20 @@ def predict_meta_at_horizon(
 
     try:
         meta_pred = float(ridge.predict(X_meta)[0])
-    except Exception:
-        # Fallback : moyenne RF+XGB pondérée
+    except Exception as exc:
+        logger.error(
+            f"PREDICTION META ECHEC : district={district_nom} h={horizon} : "
+            f"{type(exc).__name__}: {exc}. Fallback moyenne arithmetique RF+XGB."
+        )
         meta_pred = 0.5 * pred_rf + 0.5 * pred_xgb
 
-    meta_pred = max(0.0, meta_pred)
+    meta_brute = meta_pred
+    if meta_pred <= 0:
+        logger.warning(
+            f"META Prediction <=0 plancher applique : district={district_nom} h={horizon} "
+            f"brute={meta_brute:.4f} (RF={pred_rf:.3f}, XGB={pred_xgb:.3f}) -> {_MIN_INCIDENCE}"
+        )
+    meta_pred = max(_MIN_INCIDENCE, meta_pred)
 
     return {
         'horizon': horizon,
@@ -268,6 +296,7 @@ def predict_meta_at_horizon(
         'mois_cible': target_month,
         'annee_cible': int(target_date.year),
         'incidence': round(meta_pred, 3),
+        'incidence_brute': round(meta_brute, 4),
         'pred_rf': round(pred_rf, 3),
         'pred_xgb': round(pred_xgb, 3),
     }
